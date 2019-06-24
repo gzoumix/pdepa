@@ -100,7 +100,7 @@ class toStringDebugVisitor(visitor):
 
 
 # give the variables in the constraint
-class SPC_getVariablesVisitor(visitor):
+class getVariablesVisitor(visitor):
   __slots__ = "_store"
   def visit(self, el, var_set):
     self._store = var_set
@@ -128,7 +128,7 @@ class SPC_getVariablesVisitor(visitor):
 
 
 # apply a substitution on the constraint and returns the result
-class SPC_SubstitutionVisitor(visitor):
+class substitutionVisitor(visitor):
   __slots__ = '_true', '_false', '_constraints'
   def __init__(self, substitution):
     self.set_substitution(substitution)
