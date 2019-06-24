@@ -136,11 +136,16 @@ class package(object):
       self._full_fixed_product_visitor = gzl.substitutionVisitor(self._full_fixed_product).visit
 
       # apply the full product on the constraints
-      self._spc_required_use = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_required_use)
-      self._spc_depend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_depend)
-      self._spc_bdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_bdepend)
-      self._spc_rdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_rdepend)
-      self._spc_pdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_pdepend)
+      for el in self._spc_required_use: el[0] = self._full_fixed_product_visitor(el[0])
+      for el in self._spc_depend: el[0] = self._full_fixed_product_visitor(el[0])
+      for el in self._spc_bdepend: el[0] = self._full_fixed_product_visitor(el[0])
+      for el in self._spc_rdepend: el[0] = self._full_fixed_product_visitor(el[0])
+      for el in self._spc_pdepend: el[0] = self._full_fixed_product_visitor(el[0])
+      #self._spc_required_use = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_required_use)
+      #self._spc_depend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_depend)
+      #self._spc_bdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_bdepend)
+      #self._spc_rdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_rdepend)
+      #self._spc_pdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_pdepend)
 
   def get_spc(self):
     """Returns the feature model of this package.
@@ -154,11 +159,6 @@ class package(object):
       (el[0] for el in self._spc_rdepend),
       (el[0] for el in self._spc_pdepend)
     )
-    v = gzl.getVariablesVisitor().visit(gzl.And(res), set())
-    for f in v:
-      if self._repo.feature_is_iuse(f):
-        cpv, use = self._repo.feature_deconstruct(f)
-        if(self._repo.is_package_installed(cpv)): print("{}[{}] => {} [{},{},{}]".format(self._name, self._full_fixed_product == self._fixed_product,  f, cpv in self._dep_package, f in self._full_fixed_product, f in self._repo.get_package(cpv)._fixed_product))
     return gzl.Implies(self._name, gzl.And(res))
 
   #######################################
@@ -309,7 +309,7 @@ class package(object):
     return self._get_spc_require_element(el)
 
   def _get_spc_require(self, parse_tree):
-    return tuple( (self._get_spc_require_in(el), self._parse_begin, self._parse_end) for el in parse_tree[1:])
+    return tuple( [self._get_spc_require_in(el), self._parse_begin, self._parse_end] for el in parse_tree[1:])
 
   # 2. from depend
   def _get_spc_depend_element(self, parse_tree):
@@ -353,7 +353,7 @@ class package(object):
     return self._get_spc_depend_element(el)
 
   def _get_spc_depend(self, parse_tree):
-    return tuple( (self._get_spc_depend_in(el), self._parse_begin, self._parse_end) for el in parse_tree[1:])
+    return tuple( [self._get_spc_depend_in(el), self._parse_begin, self._parse_end] for el in parse_tree[1:])
   
 
 
