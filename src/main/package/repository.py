@@ -576,13 +576,13 @@ class repository(object):
     return portage.portdb.match(atom)
   @staticmethod
   def _get_atom_mask_all(atom):     # complete visibility
-    return portage.portdb.xmatch("match_all", atom)
+    return portage.portdb.xmatch("match-all", atom)
   @staticmethod
   def _get_atom_mask_keyword(atom): # only normal and keyworded packages are visible
-    return filter(repository._get_atom_mask_keyword_filter, portage.portdb.xmatch("match_all", atom))
+    return filter(repository._get_atom_mask_keyword_filter, portage.portdb.xmatch("match-all", atom))
   @staticmethod
   def _get_atom_mask_mask(atom):    # only normal and masked packages are visible
-    return filter(repository._get_atom_mask_mask_filter, portage.portdb.xmatch("match_all", atom))
+    return filter(repository._get_atom_mask_mask_filter, portage.portdb.xmatch("match-all", atom))
   @staticmethod
   def _get_atom_mask_keyword_filter(cpv):
     l = portage.getmaskingstatus(cpv, portdb=portage.portdb)
