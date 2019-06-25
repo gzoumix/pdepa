@@ -88,7 +88,7 @@ class package(object):
     # mapping from use flags to features (so we don't need to recompute them each time)
     self._use_map = { iuse: repo._compute_feature_from_iuse(self._name, iuse) for iuse in self._iuse_declared } 
     if(self._eapi < 5): self._decl_iuse_local() # in the eapi < 5, not all iuse are declared: we need to parse the AST to get all of them
-    self._use_map[None] = self._name # feature corresponding to this package selection
+    #self._use_map[None] = self._name # feature corresponding to this package selection
 
     self._dep_atom = set()    # the set of atoms this package depends on
     self._dep_package = set() # the set of packages this one depends on (directly computed from the set of atoms)
@@ -141,11 +141,6 @@ class package(object):
       for el in self._spc_bdepend: el[0] = self._full_fixed_product_visitor(el[0])
       for el in self._spc_rdepend: el[0] = self._full_fixed_product_visitor(el[0])
       for el in self._spc_pdepend: el[0] = self._full_fixed_product_visitor(el[0])
-      #self._spc_required_use = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_required_use)
-      #self._spc_depend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_depend)
-      #self._spc_bdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_bdepend)
-      #self._spc_rdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_rdepend)
-      #self._spc_pdepend = tuple((self._full_fixed_product_visitor(c), begin, end) for c, begin, end in self._spc_pdepend)
 
   def get_spc(self):
     """Returns the feature model of this package.
