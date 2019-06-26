@@ -10,11 +10,13 @@ __status__ = "Prototype"
 
 import time
 
+import z3
 import portage
 
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'main'))
+import gzoumlib.gzoumLogic as gzl
 import package.repository as repo
 
 
@@ -28,25 +30,45 @@ class analyser(object):
   def __init__(self):
     self._repo = repo.repository(analyser.config)
     self._common_features = self._repo._fixed_iuse
+    self._all_features = None
+    self._fm = None
+    self._solution = None
 
   def load_all_cpv(self):
-    constraint = []
-    features = set()
+    self._fm = []
+    self._all_features = set()
     all_cp = portage.portdb.cp_all()
     for cp in all_cp:
-      constraint.append(self._repo.get_cp(cp))
+      self._fm.append( (cp, self._repo.get_cp(cp)) )
       for cpv in self._repo.get_atom(cp):
         p = self._repo.get_package(cpv)
-        features.update(p._iuse_declared)
-        constraint.append(p.get_spc())
-    return features, constraint
+        self._all_features.update(p._use_map.values())
+        self._fm.append( (p._name, p.get_spc()) )
+
+  def test_solve(self, cpv):
+    z3_translator = gzl.toZ3Visitor().visit
+    z3_solver = z3.Solver()
+    z3_solver.add(z3_translator(cpv))
+    for cp_,c in self._fm:
+      print("loading fm from {}".format(cp_))
+      z3_solver.add(z3_translator(c))
+    if(z3_solver.check() == z3.sat): self._solution = z3_solver.model()
+    else: self._solution = None
+
+
+
 
 if(__name__ == '__main__'):
+  cpv = 'kde-plasma/plasma-meta-5.15.5'
   test = analyser()
   begin = time.time()
-  features, constraint = test.load_all_cpv()
+  test.load_all_cpv()
   end = time.time()
   print("load took {}s".format(end - begin))
   print(" loaded {} cp".format(len(test._repo._cps)))
   print(" and {} packages".format(len(test._repo._packages)))
-  print(" with {} features (among which {} are shared)".format(len(features), len(test._common_features)))
+  print(" with {} features (among which {} are shared)".format(len(test._all_features), len(test._common_features)))
+  begin = time.time()
+  test.test_solve(cpv)
+  end = time.time()
+  print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cpv, end - begin))

@@ -43,7 +43,7 @@ class Iff(SPC):
 
 
 # check if the constraint is true from the given model
-class SPC_truthVisitor(visitor):
+class truthVisitor(visitor):
   __slots__ = "_model"
   def __init__(self, model=None): self._model = model
   def set_model(self, model): self._model = model
@@ -258,7 +258,7 @@ if(z3_loaded):
     def next(self): return self.__next__()
 
 
-  class SPC_toZ3Visitor(visitor):
+  class toZ3Visitor(visitor):
     __slots__ = "_var_map"
     def __init__(self):
       self._var_map = {}
@@ -267,7 +267,7 @@ if(z3_loaded):
       #print(str(sub))
       if(isinstance(sub, str)):
         res = self._var_map.get(sub)
-        if(res == None):
+        if(res is None):
           res = z3.Bool(sub)
           self._var_map[sub] = res
         return res

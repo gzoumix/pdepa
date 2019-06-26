@@ -33,7 +33,7 @@ class dep_solver(object):
   def __init__(self, repo, dep_solver_conf):
     self._repo = repo
     self._config = dep_solver_conf
-    self._z3_translator = gzl.SPC_toZ3Visitor()
+    self._z3_translator = gzl.toZ3Visitor()
     self._z3_solver = z3.Solver()
     self._z3_solver.set(unsat_core=True)
     self._loaded_els = set()
