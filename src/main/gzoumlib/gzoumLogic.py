@@ -264,17 +264,18 @@ if(z3_loaded):
       self._var_map = {}
   
     def visit(self, sub):
-      #print(str(sub))
       if(isinstance(sub, str)):
         res = self._var_map.get(sub)
         if(res is None):
           res = z3.Bool(sub)
           self._var_map[sub] = res
-        return res
-      elif(isinstance(sub, bool)): return sub
-      else: return sub.accept(self)
+      elif(isinstance(sub, bool)): res = sub
+      else: res = sub.accept(self)
+      return res
   
-    def And(self, el): return z3.And(tuple( self.visit(sub) for sub in el._content ))
+    def And(self, el):
+      res = tuple( self.visit(sub) for sub in el._content )
+      return z3.And(tuple( self.visit(sub) for sub in el._content ))
     def Or(self, el): return z3.Or(tuple( self.visit(sub) for sub in el._content ))
     def Xor(self, el):
       u = tuple(self.visit(sub) for sub in el._content)
@@ -287,7 +288,7 @@ if(z3_loaded):
         return z3.And(res)
       elif(nb is 2):
         return z3.Xor(u[0], u[1])
-      else: return u
+      else: return u[0]
     def Conflict(self, el):
       u = tuple(self.visit(sub) for sub in el._content)
       nb = len(u)

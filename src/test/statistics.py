@@ -45,12 +45,11 @@ class analyser(object):
         self._all_features.update(p._use_map.values())
         self._fm.append( (p._name, p.get_spc()) )
 
-  def test_solve(self, cpv):
+  def test_solve(self, cp):
     z3_translator = gzl.toZ3Visitor().visit
     z3_solver = z3.Solver()
-    z3_solver.add(z3_translator(cpv))
+    z3_solver.add(z3_translator(gzl.Or(self._repo.get_atom(cp))))
     for cp_,c in self._fm:
-      print("loading fm from {}".format(cp_))
       z3_solver.add(z3_translator(c))
     if(z3_solver.check() == z3.sat): self._solution = z3_solver.model()
     else: self._solution = None
