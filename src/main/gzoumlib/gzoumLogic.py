@@ -298,7 +298,7 @@ if(z3_loaded):
           res_conflict = tuple(u[j] for j in range(nb) if(j != i))
           res.append(z3.Implies(u[i], z3.Not(z3.Or(res_conflict))))
         return z3.And(res)
-      else: return u
+      else: return u[0]
     def Not(self, el): return z3.Not(self.visit(el._content))
     def Implies(self, el): return z3.Implies(self.visit(el._content[0]), self.visit(el._content[1]))
     def Iff(self, el): return self.visit(el._content[0]) == self.visit(el._content[1])
