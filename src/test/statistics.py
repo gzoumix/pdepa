@@ -27,24 +27,39 @@ installed_enum = repo.repository.config.exp_installed
 
 
 class analyser(object):
-  config = repo.repository.config(use_enum.use_all, mask_enum.mask_all, None)
-  def __init__(self):
-    self._repo = repo.repository(analyser.config)
+  config_default = repo.repository.config(None, None, None)
+  config_use = repo.repository.config(use_enum.use_all, None, installed_enum.inst_all)
+  config_mask = repo.repository.config(None, mask_enum.mask_all, None)
+  config_all = repo.repository.config(use_enum.use_all, mask_enum.mask_all, installed_enum.inst_all)
+  def __init__(self, config):
+    self._repo = repo.repository(config)
     self._common_features = self._repo._fixed_iuse
-    self._all_features = None
-    self._fm = None
+    self._all_features = set()
+    self._loaded_cp = set()
+    self._fm = []
     self._solution = None
 
   def load_all_cpv(self):
-    self._fm = []
-    self._all_features = set()
-    all_cp = portage.portdb.cp_all()
-    for cp in all_cp:
+    all_cp = None#portage.portdb.cp_all()
+    for cp in all_cp: self.load_cp(self, cp)
+
+  def load_deps(self, cp):
+    added_cpv = self.load_cp(cp)
+    deps = { self._repo.get_package(dep)._cp for cpv in added_cpv for dep in self._repo.get_package(cpv)._dep_package }
+    for dep in deps: self.load_deps(dep)
+
+  def load_cp(self, cp):
+    added_cpv = set()
+    if(cp not in self._loaded_cp):
+      self._loaded_cp.add(cp)
       self._fm.append( (cp, self._repo.get_cp(cp)) )
-      for cpv in self._repo.get_atom(cp):
+      cpvs = self._repo.get_atom(cp)
+      added_cpv.update(cpvs)
+      for cpv in cpvs:
         p = self._repo.get_package(cpv)
         self._all_features.update(p._use_map.values())
         self._fm.append( (p._name, p.get_spc()) )
+    return added_cpv
 
   def test_solve(self, cp):
     z3_translator = gzl.toZ3Visitor().visit
@@ -127,28 +142,48 @@ class analyser(object):
 
 if(__name__ == '__main__'):
   parser = argparse.ArgumentParser()
-  parser.add_argument("package", nargs='?', help="the list of packages to install. For more flexibility, every element of the list can follow the DEPEND syntax")
+  subparsers = parser.add_subparsers()
+  dep_parser = subparsers.add_parser('check')
+  dep_parser.add_argument("package", help="the cp to install")
+  dep_parser.add_argument("-d", action="store_true",  help="load only the dependencies of the cp to install, instead of the whole feature model")
+  dep_parser.add_argument("-u", action="store_true",  help="explore use flags")
+  dep_parser.add_argument("-m", action="store_true",  help="explore masked packages")
   args = parser.parse_args()
 
-  cpv = args.package
-  if(cpv is None): print("TODO: load the portage feature model and translate it into CNF form")
-  else: print("TODO: load the portage feature model and check dependencies of cp: {}".format(cpv))
+  def statistics_load(f):
+    begin = time.time()
+    f()
+    end = time.time()
+    print("load took {}s".format(end - begin))
+    print(" loaded {} cp".format(len(test._repo._cps)))
+    print(" and {} packages".format(len(test._repo._packages)))
+    print(" with {} features (among which {} are shared)".format(len(test._all_features), len(test._common_features)))
 
-  test = analyser()
-  begin = time.time()
-  test.load_all_cpv()
-  end = time.time()
-  print("load took {}s".format(end - begin))
-  print(" loaded {} cp".format(len(test._repo._cps)))
-  print(" and {} packages".format(len(test._repo._packages)))
-  print(" with {} features (among which {} are shared)".format(len(test._all_features), len(test._common_features)))
-  if(cpv is None):
+
+  if(not hasattr(args, 'package')): # print the CNF of the whole feature model
+    test = analyser(analyser.config_all)
+    statistics_load(test.load_all_cpv)
     begin = time.time()
     test.write_fm("portage.cnf")
     end = time.time()
     print("translated the portage feature model and wrote the file in {}s".format(end - begin))
-  else:  
+  else: # test installation of cp
+    cp = args.package
+    config = None
+    if(args.u):
+      if(args.m): config = analyser.config_all
+      else: config = analyser.config_use
+    elif(args.m): config = analyser.config_mask
+    else: config = analyser.config_default
+
+    test = analyser(config)
+
+    if(args.d): f = lambda: test.load_deps(cp)
+    else: f = test.load_all_cpv
+    statistics_load(f)
     begin = time.time()
-    test.test_solve(cpv)
+    test.test_solve(cp)
     end = time.time()
-    print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cpv, end - begin))
+    print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cp, end - begin))
+    if(test._solution is None): exit(1)
+    else: exit(0)
