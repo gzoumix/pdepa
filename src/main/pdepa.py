@@ -44,7 +44,7 @@ class dep_solver(object):
     if(self._config._installed is not None): # we can touch the current installation, while still enforcing the required packages
       required_depend = self._repo.get_required_depend()
       dummy_package = self._repo.get_dummy_package(name='world', depend=required_depend)
-      constraint = self._z3_translator.visit(dummy_package.get_spc_depend())
+      constraint = self._z3_translator.visit(dummy_package.get_spc())
       self._manage_constraint(constraint, dummy_package._name, dep_solver.kind.package)
     # else: it is managed with the fixed_product that sets every installed packages to True
 
@@ -144,7 +144,7 @@ class dep_solver(object):
     for f in self._solution:
       if(self._repo.feature_is_iuse(f)):
         cpv, iuse = self._repo.feature_deconstruct(f)
-        if(self._repo.is_package_installed(cpv)): print("{} [{}]=> {}".format(f, self._repo.get_package(cpv)._eapi, self._repo.is_package_deprecated(cpv)))
+        #if(self._repo.is_package_installed(cpv)): print("{} [{}]=> {}".format(f, self._repo.get_package(cpv)._eapi, self._repo.is_package_deprecated(cpv)))
         use = solution_use_tmp.get(cpv)
         if(use is None):
           use = []
@@ -170,8 +170,8 @@ class dep_solver(object):
     if(self._config._installed is None): solution_uninstall = frozenset()
     else:
       # we remove package that are not updated, i.e., that have no equivlance in solution_packages with the same cp and slot 
-      cps = { (p._cp, p._slot): p._name for p in map(self.repo.get_package, self._repo.get_installed_packages()) }
-      for p in map(self.repo.get_package, solution_packages): del cps[(p._cp, p._slot)]
+      cps = { (p._cp, p._slot): p._name for p in map(self._repo.get_package, self._repo.get_installed_packages()) }
+      for p in map(self._repo.get_package, solution_packages): cps.pop((p._cp, p._slot), None)
       solution_uninstall = frozenset(cps.values())
     #
     return solution_packages, solution_use, solution_mask, solution_uninstall
@@ -263,6 +263,14 @@ class dep_solver(object):
 #        solver.add(z3_translator.visit(new_c))
 #  return solution
 
+def print_model(solution_packages, solution_use, solution_mask, solution_uninstall):
+  for cpv in solution_packages:
+    suse = solution_use.get(cpv)
+    if(suse is None): print('[ebuild N] {}'.format(cpv))
+    else: print('[ebuild N] {} USE="{}"'.format(cpv, " ".join([("" if v else "-") + use for use, v in suse.items()])))
+  for cpv in solution_uninstall:
+    print('[ebuild D] {}'.format(cpv))
+
 
 self_program_name = None # set during parameter parsing
 
@@ -290,7 +298,7 @@ def generate_installation_files(solution_packages, solution_use, solution_mask, 
     f.write("\n")
     for cpv, use_selection in solution_use.items():
       string = "={} ".format(cpv)
-      string = string + " ".join([('-' if(selected) else '') + iuse for iuse,selected in use_selection.items()]) + "\n"
+      string = string + " ".join([('' if(selected) else '-') + iuse for iuse,selected in use_selection.items()]) + "\n"
       f.write(string)
     f.write("\n")
 
@@ -317,7 +325,7 @@ def print_reason(repo, reason):
     print("IN {}: {}".format(package._name, c_kind[0]))
     c, sb, se = c_info
     print("  => constraint: {}".format(c_kind[2](package)[sb:se]))
-    print("  => with full use: {}".format(" ".join(list(map(lambda x: x.split('%')[1], package.get_full_use())))))
+    print("  => with full use: {}".format(" ".join(list(filter(lambda x: x is not None, map(lambda kv: (repo.feature_deconstruct(kv[0])[1] if(kv[1]) else None), package.get_fixed_product().items()))))))
     print("  => translated: {}".format(spc_to_string(c)))
     print("")
 
@@ -332,6 +340,7 @@ def main_manage_parameter():
   parser.add_argument("-M", "--explore-mask", type=mask_enum, choices=list(mask_enum), default=None, const=mask_enum.mask_all, nargs='?', action='store',  help="allow the tool to unmask packages")
   parser.add_argument("-C", "--explore-installed", type=installed_enum, choices=list(installed_enum), default=None, const=installed_enum.inst_all, nargs='?', action='store', help="allow the tool to also consider the installed packages in its dependency computation")
   parser.add_argument("-O", "--optimize", action="store_true", help="the tool will optimize the solution (installing less packages, unmasking less packages and changing less use flags when relevant)")
+  parser.add_argument("-p", "--pretend", action="store_true", help="do not generate the installation files")
   parser.add_argument("-v", "--verbose", action="count", default=0, help="increase tool verbosity")
   parser.add_argument("--", dest="sep", help="separator between the option and the list of packages")
   parser.add_argument("package", nargs='+', help="the list of packages to install. For more flexibility, every element of the list can follow the DEPEND syntax")
@@ -344,21 +353,25 @@ def main_manage_parameter():
 
   repo_conf = repository.repository.config(args.explore_use, args.explore_mask, args.explore_installed)
   dep_solver_conf = dep_solver.config(args.explore_use, args.explore_installed, args.optimize)
-  return args.verbose, repo_conf, dep_solver_conf, ' '.join(args.package)
+  return args.verbose, args.pretend, repo_conf, dep_solver_conf, ' '.join(args.package)
 
 
 
 
 if(__name__ == '__main__'):
-  verbose, repo_conf, dep_solver_conf, depend = main_manage_parameter()
+  verbose, pretend, repo_conf, dep_solver_conf, depend = main_manage_parameter()
   repo = repository.repository(repo_conf)
   solver = dep_solver(repo, dep_solver_conf)
   solver.add(depend)
   if(solver.sat()):
     solution_packages, solution_use, solution_mask, solution_uninstall = solver.model()
-    generate_installation_files(solution_packages, solution_use, solution_mask, solution_uninstall)
+    print_model(solution_packages, solution_use, solution_mask, solution_uninstall)
+    if(not pretend): generate_installation_files(solution_packages, solution_use, solution_mask, solution_uninstall)
+    exit(0)
   else:
     print("Failure due to the following conflicting dependencies")
     reason = solver.conflict()
     #print(reason)
     print_reason(repo, reason)
+    exit(1)
+

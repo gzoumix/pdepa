@@ -101,6 +101,10 @@ class package(object):
         Otherwise, it is the one corresponding to the use flag in parameter for this package 
     """
     return self._use_map[iuse]
+    #try:
+    #  return self._use_map[iuse]
+    #except Exception as e:
+    #  raise Exception("{}: {}".format(self._name, str(e)))
 
 
   def set_fixed_product(self, fixed_product):
@@ -131,8 +135,15 @@ class package(object):
       self._spc_rdepend = self._get_spc_depend(self._tree_rdepend)
       self._spc_pdepend = self._get_spc_depend(self._tree_pdepend)
 
+      #print("DEPEND of {}".format(self._name))
+      #print("  " + self._depend)
+      #print("    => {}".format(gzl.toStringDebugVisitor().visit(gzl.And(list(map(lambda x: x[0], self._spc_depend))))))
+
       # compute the full product from the dependencies
       self._full_fixed_product = dictmerge(self._fixed_product, *tuple(self._repo.get_package(cpv)._fixed_product for cpv in self._dep_package))
+
+      #print("    => {}".format(self._full_fixed_product))
+
       self._full_fixed_product_visitor = gzl.substitutionVisitor(self._full_fixed_product).visit
 
       # apply the full product on the constraints
@@ -141,6 +152,9 @@ class package(object):
       for el in self._spc_bdepend: el[0] = self._full_fixed_product_visitor(el[0])
       for el in self._spc_rdepend: el[0] = self._full_fixed_product_visitor(el[0])
       for el in self._spc_pdepend: el[0] = self._full_fixed_product_visitor(el[0])
+
+
+      #print("    => {}".format(gzl.toStringDebugVisitor().visit(gzl.And(list(map(lambda x: x[0], self._spc_depend))))))
 
   def get_spc(self):
     """Returns the feature model of this package.
@@ -715,7 +729,7 @@ class repository(object):
     config = dict(zip(repository._build_package_from_vardb_keys, self._vardb.aux_get(cpv, repository._build_package_from_vardb_keys)))
     eapi = int(config['EAPI'])
     slots = config['SLOT'].split("/")
-    iuse_referenceable = string_to_frozenset(self._config['IUSE'])
+    iuse_referenceable = string_to_frozenset(config['IUSE'])
     use_installed = string_to_frozenset(config['USE'])
     iuse_declared = use_installed.union(iuse_referenceable)
     res = package(
