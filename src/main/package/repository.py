@@ -349,11 +349,9 @@ class package(object):
     dependencies = self._repo.get_atom(atom)
     self._dep_atom.add(atom)
     self._dep_package.update(dependencies)
-    if(neg is not identity): return neg(gzl.Or(dependencies))
-    else:
-      selection_list = [ self._get_spc_selection(el) for el in parse_tree if((len(el) > 0) and (el[0].name == "selection")) ]
-      #print("SELECTION in {} for {}: {}".format(self._name, atom, [('!' if(selection_type is gzl.Not) else 'id', use, default, '?' if(suffix is gzl.Implies) else '<=>') for selection_type, use, default, suffix in selection_list]))
-      return neg(gzl.Or([ package.manage_selection_list(self._repo.get_package(local_cpv), selection_list) for local_cpv in dependencies ]))
+    selection_list = [ self._get_spc_selection(el) for el in parse_tree if((len(el) > 0) and (el[0].name == "selection")) ]
+    #print("SELECTION in {} for {}: {}".format(self._name, atom, [('!' if(selection_type is gzl.Not) else 'id', use, default, '?' if(suffix is gzl.Implies) else '<=>') for selection_type, use, default, suffix in selection_list]))
+    return neg(gzl.Or([ package.manage_selection_list(self._repo.get_package(local_cpv), selection_list) for local_cpv in dependencies ]))
 
   def _get_spc_depend_in(self, el):
     self._parse_begin = None

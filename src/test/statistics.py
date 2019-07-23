@@ -10,6 +10,7 @@ __status__ = "Prototype"
 
 import time
 import argparse
+import random
 
 import z3
 import portage
@@ -40,8 +41,9 @@ class analyser(object):
     self._solution = None
 
   def load_all_cpv(self):
-    all_cp = None#portage.portdb.cp_all()
-    for cp in all_cp: self.load_cp(self, cp)
+    print('all')
+    all_cp = portage.portdb.cp_all()
+    for cp in all_cp: self.load_cp(cp)
 
   def load_deps(self, cp):
     added_cpv = self.load_cp(cp)
@@ -143,11 +145,20 @@ class analyser(object):
 if(__name__ == '__main__'):
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers()
+
+  # subparser for the full loading the gentoo feature model and checking the installation of a package category
   dep_parser = subparsers.add_parser('check')
   dep_parser.add_argument("package", help="the cp to install")
   dep_parser.add_argument("-d", action="store_true",  help="load only the dependencies of the cp to install, instead of the whole feature model")
   dep_parser.add_argument("-u", action="store_true",  help="explore use flags")
   dep_parser.add_argument("-m", action="store_true",  help="explore masked packages")
+
+  # subparser for generating a testing bash script
+  stat_parser = subparsers.add_parser('stat')
+  stat_parser.add_argument("nb_test", default="1000", help="number of test to perform")
+  stat_parser.add_argument("max_length", default="1", help="max length of the list")
+
+
   args = parser.parse_args()
 
   def statistics_load(f):
@@ -160,14 +171,14 @@ if(__name__ == '__main__'):
     print(" with {} features (among which {} are shared)".format(len(test._all_features), len(test._common_features)))
 
 
-  if(not hasattr(args, 'package')): # print the CNF of the whole feature model
+  if((not hasattr(args, 'package')) and (not hasattr(args, 'nb_test'))): # print the CNF of the whole feature model
     test = analyser(analyser.config_all)
     statistics_load(test.load_all_cpv)
     begin = time.time()
     test.write_fm("portage.cnf")
     end = time.time()
     print("translated the portage feature model and wrote the file in {}s".format(end - begin))
-  else: # test installation of cp
+  elif(hasattr(args, 'package')): # test installation of cp
     cp = args.package
     config = None
     if(args.u):
@@ -187,3 +198,38 @@ if(__name__ == '__main__'):
     print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cp, end - begin))
     if(test._solution is None): exit(1)
     else: exit(0)
+  elif(hasattr(args, 'nb_test')):
+    nb_test = int(args.nb_test)
+    max_length = int(args.max_length) + 1
+    all_cp = portage.portdb.cp_all()
+    with open("statistics.sh", 'w') as f:
+      f.write("""#!/bin/bash
+
+BENCHDIR=bench
+# setup the bench repository
+[ -e "${{BENCHDIR}}" ] || mkdir "${{BENCHDIR}}"
+
+PYTHONPATH="$PYTHONPATH:$(pwd)/../main"
+
+i=0
+function test {{
+  DIR="${{BENCHDIR}}/test_$i"
+  i=$((i+1))
+
+  mkdir "${{DIR}}"
+  echo "$@" > "${{DIR}}/list.txt"
+  # emerge
+  #{{ time emerge -p --backtrack=300 --autounmask y --autounmask-keep-keywords y --autounmask-keep-masks y --autounmask-continue y --autounmask-backtrack y "$@" ; }} &> "${{DIR}}/emerge.out"
+  {{ time emerge -p --autounmask y --autounmask-continue y --autounmask-backtrack y "$@" ; }} &> "${{DIR}}/emerge.out"
+  {{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; }} > "${{DIR}}/emerge.res"
+  # pdepa
+  #{{ time  python ../main/pdepa.py -U -C -p --  "$@" ; }} &> "${{DIR}}/pdepa.out"
+  {{ time  python ../main/pdepa.py -U -C -M -p --  "$@" ; }} &> "${{DIR}}/pdepa.out"
+  {{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; }} > "${{DIR}}/pdepa.res"
+}}
+
+{}
+      """.format('\n'.join(['test ' + ' '.join(random.choices(all_cp, k=random.randrange(1,max_length))) for i in range(nb_test)])))
+
+
+  else: raise Exception("bad arguments")
