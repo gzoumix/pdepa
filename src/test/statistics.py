@@ -45,10 +45,11 @@ class analyser(object):
     all_cp = portage.portdb.cp_all()
     for cp in all_cp: self.load_cp(cp)
 
-  def load_deps(self, cp):
-    added_cpv = self.load_cp(cp)
-    deps = { self._repo.get_package(dep)._cp for cpv in added_cpv for dep in self._repo.get_package(cpv)._dep_package }
-    for dep in deps: self.load_deps(dep)
+  def load_deps(self, cps):
+    for cp in cps:
+      added_cpv = self.load_cp(cp)
+      deps = { self._repo.get_package(dep)._cp for cpv in added_cpv for dep in self._repo.get_package(cpv)._dep_package }
+      for dep in deps: self.load_deps(dep)
 
   def load_cp(self, cp):
     added_cpv = set()
@@ -63,10 +64,10 @@ class analyser(object):
         self._fm.append( (p._name, p.get_spc()) )
     return added_cpv
 
-  def test_solve(self, cp):
+  def test_solve(self, cps):
     z3_translator = gzl.toZ3Visitor().visit
     z3_solver = z3.Solver()
-    z3_solver.add(z3_translator(gzl.Or(self._repo.get_atom(cp))))
+    z3_solver.add(z3_translator(gzl.And([gzl.Or(self._repo.get_atom(cp)) for cp in cps])))
     for cp_,c in self._fm:
       z3_solver.add(z3_translator(c))
     if(z3_solver.check() == z3.sat): self._solution = z3_solver.model()
@@ -148,7 +149,7 @@ if(__name__ == '__main__'):
 
   # subparser for the full loading the gentoo feature model and checking the installation of a package category
   dep_parser = subparsers.add_parser('check')
-  dep_parser.add_argument("package", help="the cp to install")
+  dep_parser.add_argument("package", nargs='+', help="the cp to install")
   dep_parser.add_argument("-d", action="store_true",  help="load only the dependencies of the cp to install, instead of the whole feature model")
   dep_parser.add_argument("-u", action="store_true",  help="explore use flags")
   dep_parser.add_argument("-m", action="store_true",  help="explore masked packages")
@@ -179,7 +180,7 @@ if(__name__ == '__main__'):
     end = time.time()
     print("translated the portage feature model and wrote the file in {}s".format(end - begin))
   elif(hasattr(args, 'package')): # test installation of cp
-    cp = args.package
+    cps = args.package
     config = None
     if(args.u):
       if(args.m): config = analyser.config_all
@@ -189,13 +190,13 @@ if(__name__ == '__main__'):
 
     test = analyser(config)
 
-    if(args.d): f = lambda: test.load_deps(cp)
+    if(args.d): f = lambda: test.load_deps(cps)
     else: f = test.load_all_cpv
     statistics_load(f)
     begin = time.time()
-    test.test_solve(cp)
+    test.test_solve(cps)
     end = time.time()
-    print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cp, end - begin))
+    print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cps, end - begin))
     if(test._solution is None): exit(1)
     else: exit(0)
   elif(hasattr(args, 'nb_test')):
