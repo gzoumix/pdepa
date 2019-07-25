@@ -1,13 +1,12 @@
 #!/bin/bash
 
 NB_TOTAL_FEATURES='670123'
-NB_TEST_FULL='20'
+NB_TEST_FULL='21'
 
-NB_TEST=$(find bench -name "pdepa.out" | wc -l)
+NB_TEST_BENCH=$(find bench -name "pdepa.out" | wc -l)
 
 
 # file names
-PDEPA_TIME_TMP="pdepa_time_unsorted.dat"
 PDEPA_TIME="pdepa_time.dat"
 EMERGE_TIME="emerge_time.dat"
 FULL_TIME="full_time.dat"
@@ -23,34 +22,18 @@ INCOMPLETE_EMERGE="emerge_fail.dat"
 INCOMPLETE_PDEPA="pdepa_fail.dat"
 
 
+#########################################
+# functions
 function create_file {
   [ -e "$1" ] && rm "$1"
   touch "$1"
 }
 
 
-#########################################
-# first, create the time files
-
-# first, create the file for pdepa, since it is used as reference for the emerge file
-create_file "${PDEPA_TIME_TMP}"
-for i in $(find bench -name "pdepa.out" -printf "%P\n"); do
-  T=$(grep '^user' "bench/$i" | sed 's/s//g' | cut -f 2)                        # literal time
-  T=$(echo "$(echo $T | cut -dm -f 1) *60 + $(echo $T | cut -dm -f 2)" | bc) # time in seconds
-  echo "$(dirname $i) $T" >> "${PDEPA_TIME_TMP}"
-done
-# second, create the actual pdepa output, and the ordered list of tests
-sort -t' ' -k 2 -g "${PDEPA_TIME_TMP}" > "${PDEPA_TIME}"
-LIST=$(cut -d' ' -f 1 "${PDEPA_TIME}")
-
-# third, generate the emerge file
-create_file "$EMERGE_TIME"
-for i in $LIST; do
-  T=$(grep '^user' "bench/$i/emerge.out" | sed 's/s//g' | cut -f 2)             # literal time
-  T=$(echo "$(echo $T | cut -dm -f 1) *60 + $(echo $T | cut -dm -f 2)" | bc) # time in seconds
-  echo "$i $T" >> "${EMERGE_TIME}"
-done
-
+function get_time {
+  T=$(grep '^user' "$1" | sed 's/s//g' | cut -f 2)           # literal time
+  echo "$(echo $T | cut -dm -f 1) *60 + $(echo $T | cut -dm -f 2)" | bc # time in seconds  
+}
 
 function stat_number {
   INPUT="$1"
@@ -77,6 +60,40 @@ function stat_number {
   echo "max ${max}" >> "$OUTPUT"
 }
 
+
+#########################################
+# first, create the feature loaded file
+# which gives the order
+
+create_file "${PDEPA_LOAD}"
+for i in $(find bench -name "pdepa.out" -printf "%P\n"); do
+  N=$(grep '^loaded' "bench/$i" | cut -d' ' -f 3) # the number of loaded features
+  N=$(echo "scale=3; ($N * 100) / ${NB_TOTAL_FEATURES}" | bc) # percent of the full set of features
+  echo "$(dirname $i) $N" >> "${PDEPA_LOAD}"
+done
+sort -t' ' -k 2 -g -o "${PDEPA_LOAD}" "${PDEPA_LOAD}"
+LIST=$(cut -d' ' -f 1 "${PDEPA_LOAD}")
+
+stat_number "$PDEPA_LOAD" "$PDEPA_LOAD_STAT"
+
+
+#########################################
+# second, create the time files
+
+# first, create the file for pdepa, since it is used as reference for the emerge file
+create_file "${PDEPA_TIME}"
+for i in $LIST; do
+  T=$(get_time "bench/$i/pdepa.out")
+  echo "$(dirname $i) $T" >> "${PDEPA_TIME}"
+done
+
+# third, generate the emerge file
+create_file "$EMERGE_TIME"
+for i in $LIST; do
+  T=$(get_time "bench/$i/emerge.out")
+  echo "$i $T" >> "${EMERGE_TIME}"
+done
+
 stat_number "$PDEPA_TIME" "$PDEPA_TIME_STAT"
 stat_number "$EMERGE_TIME" "$EMERGE_TIME_STAT"
 
@@ -86,27 +103,12 @@ stat_number "$EMERGE_TIME" "$EMERGE_TIME_STAT"
 
 
 #########################################
-# second, create the feature loaded file
-
-create_file "${PDEPA_LOAD}"
-for  i in $LIST; do
-  N=$(grep '^loaded' "bench/$i/pdepa.out" | cut -d' ' -f 3) # the number of loaded features
-  N=$(echo "scale=3; ($N * 100) / ${NB_TOTAL_FEATURES}" | bc) # percent of the full set of features
-  echo "$i $N" >> "${PDEPA_LOAD}"
-done
-
-stat_number "$PDEPA_LOAD" "$PDEPA_LOAD_STAT"
-## add the column names to the files
-#sed -i '1i x y' "${PDEPA_LOAD}"
-
-
-#########################################
 # third, check emerge completeness
 
 create_file "${INCOMPLETE_EMERGE}"
 create_file "${INCOMPLETE_PDEPA}"
 for i in $LIST; do
-  EFAIL='0'
+  EFAIL='nan'
   # ! [ebuild    => emerge does not try to install anything
   # REQUIRED_USE => emerge complains about the REQUIRED_USE not being set
   # dependency .* conflict  => emerge found a slot conflict and cannot proceed
@@ -122,28 +124,26 @@ for i in $LIST; do
   echo "$i $EFAIL" >> "${INCOMPLETE_EMERGE}"
 
   if [ "$(cat "bench/$i/pdepa.res")" = "success" ]; then
-    echo "$i 0" >> "${INCOMPLETE_PDEPA}"
+    echo "$i nan" >> "${INCOMPLETE_PDEPA}"
   else
-    echo "$i .5" >> "${INCOMPLETE_PDEPA}"
+    echo "$i -1" >> "${INCOMPLETE_PDEPA}"
   fi
 done
 
 
 #########################################
 # fourth, do the tests on full
-step=$((NB_TEST / NB_TEST_FULL))
 LIST=($LIST) # get an array so we have direct lookup
 
+rm $(find "bench" -name "full.???")
 create_file "$FULL_TIME"
-for ((k=0; k<${NB_TEST}; k+=1)); do
-  if [ $((k % step)) = '0' ] || [ "$k" = $((${NB_TEST} - 1)) ]; then
-    i="${LIST[$k]}"
-    { time  python statistics.py check -u -m $(cat "bench/$i/list.txt") ; } &> "bench/$i/full.out"
-    { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "bench/$i/full.res"
-    T=$(grep '^user' "bench/$i/full.out" | sed 's/s//g' | cut -f 2)            # literal time
-    T=$(echo "$(echo $T | cut -dm -f 1) *60 + $(echo $T | cut -dm -f 2)" | bc) # time in seconds
-    echo "$i $T" >> "${FULL_TIME}"
-  fi
+for j in $(seq 0 "$((${NB_TEST_FULL} -1))"); do
+  k=$(echo "(($j * ${NB_TEST_BENCH} * 10) + 5) / (${NB_TEST_FULL} * 10)" | bc)
+  i="${LIST[$k]}"
+  { time  python statistics.py check -u -m $(cat "bench/$i/list.txt") ; } &> "bench/$i/full.out"
+  { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "bench/$i/full.res"
+  T=$(get_time "bench/$i/full.out")
+  echo "$i $T" >> "${FULL_TIME}"
 done
 
 stat_number "$FULL_TIME" "$FULL_TIME_STAT"
