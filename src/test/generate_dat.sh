@@ -3,7 +3,7 @@
 NB_TOTAL_FEATURES='670123'
 NB_TEST_FULL='21'
 
-NB_TEST_BENCH=$(find bench -name "pdepa.out" | wc -l)
+NB_TEST_ALL=$(find bench -name "pdepa.out" | wc -l)
 
 
 # file names
@@ -38,12 +38,13 @@ function get_time {
 function stat_number {
   INPUT="$1"
   OUTPUT="$2"
+  COLUMN="$3"
   nb='0'
   sum='0'
   square='0'
   min='86400'
   max="0"
-  for i in $(cut -d' ' -f 2 "$INPUT"); do
+  for i in $(cut -d' ' -f ${COLUMN} "$INPUT"); do
     nb=$((nb + 1))
     sum=$(echo "scale=3; $sum + $i" | bc)
     square=$(echo "scale=3; $square + (${i}^2)" | bc)
@@ -74,7 +75,10 @@ done
 sort -t' ' -k 2 -g -o "${PDEPA_LOAD}" "${PDEPA_LOAD}"
 LIST=$(cut -d' ' -f 1 "${PDEPA_LOAD}")
 
-stat_number "$PDEPA_LOAD" "$PDEPA_LOAD_STAT"
+stat_number "$PDEPA_LOAD" "$PDEPA_LOAD_STAT" 2
+
+# add the column names to the file
+sed -i '1i name number' "${PDEPA_LOAD}"
 
 
 #########################################
@@ -94,12 +98,12 @@ for i in $LIST; do
   echo "$i $T" >> "${EMERGE_TIME}"
 done
 
-stat_number "$PDEPA_TIME" "$PDEPA_TIME_STAT"
-stat_number "$EMERGE_TIME" "$EMERGE_TIME_STAT"
+stat_number "$PDEPA_TIME" "$PDEPA_TIME_STAT" 2
+stat_number "$EMERGE_TIME" "$EMERGE_TIME_STAT" 2
 
-## add the column names to the files
-#sed -i '1i x y' "${PDEPA_TIME}"
-#sed -i '1i x y' "${EMERGE_TIME}"
+# add the column names to the files
+sed -i '1i name time' "${PDEPA_TIME}"
+sed -i '1i name time' "${EMERGE_TIME}"
 
 
 #########################################
@@ -130,22 +134,30 @@ for i in $LIST; do
   fi
 done
 
+# add the column names to the files
+sed -i '1i name fail' "${INCOMPLETE_PDEPA}"
+sed -i '1i name fail' "${INCOMPLETE_EMERGE}"
+
 
 #########################################
 # fourth, do the tests on full
 LIST=($LIST) # get an array so we have direct lookup
+MAX_J=$((${NB_TEST_FULL} - 1))
+MAX_E=$((${NB_TEST_ALL} - 1))
 
 rm $(find "bench" -name "full.???")
 create_file "$FULL_TIME"
-for j in $(seq 0 "$((${NB_TEST_FULL} -1))"); do
-  k=$(echo "(($j * ${NB_TEST_BENCH} * 10) + 5) / (${NB_TEST_FULL} * 10)" | bc)
+for j in $(seq 0 "${MAX_J}"); do
+  k=$(echo "(($j * ${MAX_E} * 10) + 5) / (${MAX_J} * 10)" | bc)
   i="${LIST[$k]}"
   { time  python statistics.py check -u -m $(cat "bench/$i/list.txt") ; } &> "bench/$i/full.out"
   { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "bench/$i/full.res"
   T=$(get_time "bench/$i/full.out")
-  echo "$i $T" >> "${FULL_TIME}"
+  echo "$i $((k + 1)) $T" >> "${FULL_TIME}"
 done
 
-stat_number "$FULL_TIME" "$FULL_TIME_STAT"
+stat_number "$FULL_TIME" "$FULL_TIME_STAT" 3
 
+# add the column names to the file
+sed -i '1i name index time' "${FULL_TIME}"
 
