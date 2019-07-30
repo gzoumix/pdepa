@@ -7,6 +7,9 @@ NB_TEST_ALL=$(find bench -name "pdepa.out" | wc -l)
 
 
 # file names
+PDEPA_LOAD="pdepa_load.dat"
+PDEPA_LOAD_STAT="pdepa_load.txt"
+
 PDEPA_TIME="pdepa_time.dat"
 EMERGE_TIME="emerge_time.dat"
 FULL_TIME="full_time.dat"
@@ -15,11 +18,9 @@ PDEPA_TIME_STAT="pdepa_time.txt"
 EMERGE_TIME_STAT="emerge_time.txt"
 FULL_TIME_STAT="full_time.txt"
 
-PDEPA_LOAD="pdepa_load.dat"
-PDEPA_LOAD_STAT="pdepa_load.txt"
-
 INCOMPLETE_EMERGE="emerge_fail.dat"
 INCOMPLETE_PDEPA="pdepa_fail.dat"
+INCOMPLETE_COMMON="common_fail.dat"
 
 
 #########################################
@@ -78,7 +79,7 @@ LIST=$(cut -d' ' -f 1 "${PDEPA_LOAD}")
 stat_number "$PDEPA_LOAD" "$PDEPA_LOAD_STAT" 2
 
 # add the column names to the file
-sed -i '1i name number' "${PDEPA_LOAD}"
+#sed -i '1i name number' "${PDEPA_LOAD}"
 
 
 #########################################
@@ -102,16 +103,23 @@ stat_number "$PDEPA_TIME" "$PDEPA_TIME_STAT" 2
 stat_number "$EMERGE_TIME" "$EMERGE_TIME_STAT" 2
 
 # add the column names to the files
-sed -i '1i name time' "${PDEPA_TIME}"
-sed -i '1i name time' "${EMERGE_TIME}"
+#sed -i '1i name time' "${PDEPA_TIME}"
+#sed -i '1i name time' "${EMERGE_TIME}"
 
 
 #########################################
 # third, check emerge completeness
 
+LIST=$(cut -d' ' -f 1 "${PDEPA_LOAD}")
+LIST=($LIST) # get an array so we have direct lookup
+MAX_E=$((${NB_TEST_ALL} - 1))
+
+
 create_file "${INCOMPLETE_EMERGE}"
 create_file "${INCOMPLETE_PDEPA}"
-for i in $LIST; do
+for j in $(seq 0 "${MAX_E}"); do
+  k=$((j+1))
+  i="${LIST[$j]}"
   EFAIL='nan'
   # ! [ebuild    => emerge does not try to install anything
   # REQUIRED_USE => emerge complains about the REQUIRED_USE not being set
@@ -125,25 +133,31 @@ for i in $LIST; do
       EFAIL='1'
     fi
   fi
-  echo "$i $EFAIL" >> "${INCOMPLETE_EMERGE}"
-
-  if [ "$(cat "bench/$i/pdepa.res")" = "success" ]; then
-    echo "$i nan" >> "${INCOMPLETE_PDEPA}"
-  else
-    echo "$i -1" >> "${INCOMPLETE_PDEPA}"
-  fi
+  [ "$EFAIL" = "1" ] && echo "$i $k 1" >> "${INCOMPLETE_EMERGE}"
+  [ "$(cat "bench/$i/pdepa.res")" = "fail" ] &&  echo "$i $k 1" >> "${INCOMPLETE_PDEPA}"
 done
+sort -o "${INCOMPLETE_EMERGE}" "${INCOMPLETE_EMERGE}"
+sort -o "${INCOMPLETE_PDEPA}" "${INCOMPLETE_PDEPA}"
+
+# compute common failure
+comm -12 "${INCOMPLETE_EMERGE}" "${INCOMPLETE_PDEPA}" > "${INCOMPLETE_COMMON}"
+# remove common lines
+PATTERN=$(while read line; do echo -n "^$line\\|"; done < ${INCOMPLETE_COMMON} | sed 's!/!\\/!g')
+PATTERN="${PATTERN::-2}"
+sed -i "/${PATTERN}/d" "${INCOMPLETE_EMERGE}"
+sed -i "/${PATTERN}/d" "${INCOMPLETE_PDEPA}"
+
+
 
 # add the column names to the files
-sed -i '1i name fail' "${INCOMPLETE_PDEPA}"
-sed -i '1i name fail' "${INCOMPLETE_EMERGE}"
+#sed -i '1i name fail' "${INCOMPLETE_PDEPA}"
+#sed -i '1i name fail' "${INCOMPLETE_EMERGE}"
+#sed -i '1i name fail' "${INCOMPLETE_COMMON}"
 
 
 #########################################
 # fourth, do the tests on full
-LIST=($LIST) # get an array so we have direct lookup
 MAX_J=$((${NB_TEST_FULL} - 1))
-MAX_E=$((${NB_TEST_ALL} - 1))
 
 rm $(find "bench" -name "full.???")
 create_file "$FULL_TIME"
@@ -159,5 +173,5 @@ done
 stat_number "$FULL_TIME" "$FULL_TIME_STAT" 3
 
 # add the column names to the file
-sed -i '1i name index time' "${FULL_TIME}"
+#sed -i '1i name index time' "${FULL_TIME}"
 
