@@ -81,11 +81,6 @@ The core functionalities are present, but some other important functionalities a
 
 ### TODO
 
- * Implement optimization: currently, the tool returns the first solution which may contain useless packages. This can be optimized
- * Have a user-friendly output when success
- * Comment the code
-
-### Known Bugs
- 
- * the generated package list is not correctly set w.r.t. installed and deprecated packages
- * the generated `install.use` file is not correctly generated with the options `-U +` or `-U -`
+* since it is not possible to use emerge, we need to add our own planner that then call ebuild.
+* interractive configuration
+* better user interaction
