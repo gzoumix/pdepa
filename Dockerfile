@@ -22,4 +22,8 @@ RUN eselect profile set default/linux/amd64/17.1 && \
     emerge -qv dev-python/pip && \
     pip install --user z3-solver lrparsing
 
-
+# install the execs
+RUN printf '#!/bin/bash\nCURR_DIR="$(pwd)"\ncd /opt/pdepa/src/main\npython pdepa.py $@\ncd "${CURR_DIR}"\n' > /usr/bin/pdepa && \
+    chmod 755  /usr/bin/pdepa && \
+    printf '#!/bin/bash\nCURR_DIR="$(pwd)"\ncd /opt/pdepa/src/test/bench\npython pdepa_alt.py $@\ncd "${CURR_DIR}"\n' > /usr/bin/pdepa_alt && \
+    chmod 755  /usr/bin/pdepa_alt
