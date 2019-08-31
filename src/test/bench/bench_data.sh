@@ -140,14 +140,14 @@ done
 create_file "${PDEPA_TIME}"
 for i in $LIST; do
   T=$(get_time "${BENCHDIR}/$i/pdepa.out")
-  echo "$(dirname $i) $T" >> "${PDEPA_TIME}"
+  echo "$i $T" >> "${PDEPA_TIME}"
 done
 
 # third, generate the pdepa_alt file
 create_file "${FULL_TIME}"
 for i in $LIST; do
   T=$(get_time "${BENCHDIR}/$i/pdepa_alt.out")
-  echo "$(dirname $i) $T" >> "${FULL_TIME}"
+  echo "$$i $T" >> "${FULL_TIME}"
 done
 
 stat_number "${EMERGE_TIME}" "${EMERGE_TIME_STAT}" 2
