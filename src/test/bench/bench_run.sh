@@ -74,10 +74,10 @@ function test {
   { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/emerge.res"
   # pdepa
   #{ time  pdepa -U -C -p --  "$@" ; } &> "${DIR}/pdepa.out"
-  { docker run "${DOCKER_IMAGE}" bash -c "time pdepa -U -C -M -p -- $@" ; } &> "${DIR}/pdepa.out"
+  { docker run "${DOCKER_IMAGE}" bash -c "time pdepa -U -C -M -p -v -- $@" ; } &> "${DIR}/pdepa.out"
   { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa.res"
-  # pdepa
-  #{ time  pdepa_alt -U -C -p --  "$@" ; } &> "${DIR}/pdepa.out"
+  # pdepa_alt
+  #{ time  pdepa_alt -U -C -p --  "$@" ; } &> "${DIR}/pdepa_alt.out"
   { docker run "${DOCKER_IMAGE}" bash -c "time pdepa_alt check -U -C -M -- $@" ; } &> "${DIR}/pdepa_alt.out"
   { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa_alt.res"
 }

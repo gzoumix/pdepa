@@ -363,6 +363,8 @@ if(__name__ == '__main__'):
   repo = repository.repository(repo_conf)
   solver = dep_solver(repo, dep_solver_conf)
   solver.add(depend)
+  if(verbose > 0):
+    print("loaded {} features".format(len(solver._z3_translator._var_map)))
   if(solver.sat()):
     solution_packages, solution_use, solution_mask, solution_uninstall = solver.model()
     print_model(solution_packages, solution_use, solution_mask, solution_uninstall)

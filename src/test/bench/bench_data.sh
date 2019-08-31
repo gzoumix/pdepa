@@ -68,7 +68,8 @@ function create_file {
 
 function get_time {
   T=$(grep '^user' "$1" | sed 's/s//g' | cut -f 2)           # literal time
-  echo "$(echo $T | cut -dm -f 1) *60 + $(echo $T | cut -dm -f 2)" | bc # time in seconds  
+  echo "$(echo $T | cut -dm -f 1) *60 + $(echo $T | cut -dm -f 2)" | bc # time in seconds
+
 }
 
 function stat_number {
@@ -103,8 +104,7 @@ function stat_number {
 # MAIN
 
 NB_TEST_ALL=$(find "${BENCHDIR}" -name "pdepa.out" | wc -l)
-NB_TOTAL_FEATURES=$(grep "with .* features" "${BENCHDIR}/test_1/pdepa_alt.out" | cut -d' ' -f2)
-
+NB_TOTAL_FEATURES=$(grep "with .* features" "${BENCHDIR}/test_0/pdepa_alt.out" | cut -d' ' -f3)
 
 
 #########################################
@@ -113,7 +113,7 @@ NB_TOTAL_FEATURES=$(grep "with .* features" "${BENCHDIR}/test_1/pdepa_alt.out" |
 
 create_file "${PDEPA_LOAD}"
 for i in $(find "${BENCHDIR}" -name "pdepa.out" -printf "%P\n"); do
-  N=$(grep '^loaded' "${BENCHDIR}/$i" | cut -d' ' -f 3) # the number of loaded features
+  N=$(grep '^loaded' "${BENCHDIR}/$i" | cut -d' ' -f2) # the number of loaded features
   N=$(echo "scale=3; ($N * 100) / ${NB_TOTAL_FEATURES}" | bc) # percent of the full set of features
   echo "$(dirname $i) $N" >> "${PDEPA_LOAD}"
 done
@@ -147,7 +147,7 @@ done
 create_file "${FULL_TIME}"
 for i in $LIST; do
   T=$(get_time "${BENCHDIR}/$i/pdepa_alt.out")
-  echo "$$i $T" >> "${FULL_TIME}"
+  echo "$i $T" >> "${FULL_TIME}"
 done
 
 stat_number "${EMERGE_TIME}" "${EMERGE_TIME_STAT}" 2
@@ -178,16 +178,16 @@ for j in $(seq 0 "${MAX_E}"); do
   # REQUIRED_USE => emerge complains about the REQUIRED_USE not being set
   # dependency .* conflict  => emerge found a slot conflict and cannot proceed
   # conflict and not slot   => emerge found a conflict not linked to a slot
-  if ! grep -q '^\[ebuild' "bench/$i/emerge.out" || grep -q 'REQUIRED_USE\|dependency .* conflict' "bench/$i/emerge.out" ; then
+  if ! grep -q '^\[ebuild' "${BENCHDIR}/$i/emerge.out" || grep -q 'REQUIRED_USE\|dependency .* conflict' "${BENCHDIR}/$i/emerge.out" ; then
     EFAIL='1'
   else
-    TMP=$(grep 'confict' "bench/$i/emerge.out")
+    TMP=$(grep 'confict' "${BENCHDIR}/$i/emerge.out")
     if [ "$TMP" != "" ] && { echo "$TMP" | grep -q -v 'slot' ; }; then
       EFAIL='1'
     fi
   fi
   [ "$EFAIL" = "1" ] && echo "$i $k 1" >> "${INCOMPLETE_EMERGE}"
-  [ "$(cat "bench/$i/pdepa.res")" = "fail" ] &&  echo "$i $k 1" >> "${INCOMPLETE_PDEPA}"
+  [ "$(cat "${BENCHDIR}/$i/pdepa.res")" = "fail" ] &&  echo "$i $k 1" >> "${INCOMPLETE_PDEPA}"
 done
 sort -o "${INCOMPLETE_EMERGE}" "${INCOMPLETE_EMERGE}"
 sort -o "${INCOMPLETE_PDEPA}" "${INCOMPLETE_PDEPA}"
