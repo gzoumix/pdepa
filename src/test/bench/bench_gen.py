@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-__author__ = "Michael Lienhardt"
-__copyright__ = "Copyright 2019, Michael Lienhardt"
-__license__ = "GPL3"
-__version__ = "1"
+__author__     = "Michael Lienhardt"
+__copyright__  = "Copyright 2019-2020, Michael Lienhardt"
+__license__    = "GPL3"
+__version__    = "1"
 __maintainer__ = "Michael Lienhardt"
-__email__ = "michael lienhardt@onera.fr"
-__status__ = "Prototype"
+__email__      = "michael.lienhardt@onera.fr"
+__status__     = "Prototype"
 
 import argparse
 import random

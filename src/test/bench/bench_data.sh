@@ -104,7 +104,7 @@ function stat_number {
 # MAIN
 
 NB_TEST_ALL=$(find "${BENCHDIR}" -name "pdepa.out" | wc -l)
-NB_TOTAL_FEATURES=$(grep "with .* features" "${BENCHDIR}/test_0/pdepa_alt.out" | cut -d' ' -f3)
+NB_TOTAL_FEATURES=$(grep "with .* features" "$(find "${BENCHDIR}/" -name "pdepa_alt.out" -print -and -quit)" | cut -d' ' -f3)
 
 
 #########################################
