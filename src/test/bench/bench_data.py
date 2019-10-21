@@ -14,6 +14,7 @@ import argparse
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 
 header_load_dat = ('id', 'percent')
@@ -31,9 +32,20 @@ BENCHDIR = "bench"
 SAVEDIR = os.path.join(os.getenv("HOME"), 'Downloads')
 
 
+global_size = None
+global_xticks = None
+nb_xticks = 6
+
+def compute_xticks():
+  global global_size
+  global global_xticks
+  global nb_xticks
+  last_idx = global_size - 1
+  global_xticks = tuple(round((last_idx*nb) / (nb_xticks-1)) for nb in range(nb_xticks))
+
+
 def load_table(name, ext, header):
   res = pd.read_csv(os.path.join(BENCHDIR, f"{name}.{ext}"), header=None, sep=' ', names=header, converters=converters)
-  res.set_index(header[0], inplace=True)
   return res
 
 def setup_tables():
@@ -41,10 +53,15 @@ def setup_tables():
   time_tables = { name: ( load_table(name, 'dat', header_time_dat), load_table(name, 'txt', header_stat) ) for name in time_files}
   fail_tables = { name: load_table(name, 'dat', header_fail_dat) for name in fail_files}
 
+  global global_size
+  global_size = len(load_tables[load_files[0]][0])
+  compute_xticks()
+
   return load_tables, time_tables, fail_tables
 
 
 def get_stat_info(table_stat):
+  table_stat.set_index('name', inplace=True)
   mean = table_stat.at['mean','val']
   deviation = table_stat.at['deviation','val']
   val_min = table_stat.at['min','val']
@@ -59,24 +76,64 @@ def save_table(name, column, table_pair):
   plt.axhline(mean, color='r', linestyle='--')
   plt.axhline(val_min, color='b', linestyle='--')
   plt.axhline(val_max, color='b', linestyle='--')
+
+  # yticks
   plt.yticks((val_min, mean, val_max))
+  # xticks
+  global global_xticks
+  plt.xticks(global_xticks)
+
+  print(f"saving file {BENCHDIR}_{name}.svg: ticks = {plt.xticks()[0]}")
+
   plt.savefig(os.path.join(SAVEDIR,f"{BENCHDIR}_{name}.svg"), format='svg')
+
   plt.clf()
 
 
-def save_fail(last_idx, fail_tables):
-  df = pd.DataFrame()
+def create_fail_table(fail_tables):
+  global global_size
+  # create the data
+  data = {name.split('_')[0]: [0 for i in range(global_size)] for name in fail_tables.keys()}
   for name, table in fail_tables.items():
+    name = name.split('_')[0]
     table.set_index('index', inplace=True)
     table.sort_index(inplace=True)
-    table[name] = table['is_fail']
-    if(df.empty): df = table[[name]]
-    else: df = df.join(table[name])
+    for idx, v in table['is_fail'].items(): data[name][idx] = v
+  # return the table
+  return pd.DataFrame(data=data)
+
+def save_fail_old(fail_tables):
+  # create and display the table
+  df = create_fail_table(fail_tables)
   df.plot.bar()
-  plt.yticks((0,1))
-  plt.xticks(tuple(plt.xticks()[0]) + (last_idx,))
+
+  # yticks
+  #plt.yticks((0,1))
+  # xticks
+  global global_xticks
+  plt.xticks(global_xticks)
+
+  print(f"saving file {BENCHDIR}_fail.svg: ticks = {plt.xticks()[0]}")
+
   plt.savefig(os.path.join(SAVEDIR,f"{BENCHDIR}_fail.svg"), format='svg')
   plt.clf()
+
+
+def save_fail(fail_tables):
+  handles_fail = []
+  handles_nofail = []
+
+  for name, table in fail_tables.items():
+    name = name.split('_')[0]
+    data = sorted(table['index'].values)
+    if(data): handles_fail.append(plt.bar(data, height=1, label=name))
+    else: handles_nofail.append(mpatches.Patch(color='none', label=f"{name}: no failure"))
+
+  global global_xticks
+  plt.xticks(global_xticks)
+  
+  plt.legend(handles=handles_fail + handles_nofail)
+  plt.savefig(os.path.join(SAVEDIR,f"{BENCHDIR}_fail.svg"), format='svg')
 
 
 def main_manage_parameter():
@@ -98,8 +155,7 @@ if(__name__ == "__main__"):
   for name, table_pair in time_tables.items():
     save_table(name, 'time', table_pair)
 
-  last_idx = len(load_tables[load_files[0]][0]) - 1
-  save_fail(last_idx, fail_tables)
+  save_fail(fail_tables)
 
 
 
