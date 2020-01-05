@@ -31,5 +31,5 @@ if(__name__ == '__main__'):
   nb_test, min_length, max_length = main_manage_parameter()
   all_cp = portage.portdb.cp_all()
   for i in range(nb_test):
-    print(' '.join(random.choices(all_cp, k=random.randrange(min_length,max_length))))
+    print(f"test_{i} {' '.join(random.choices(all_cp, k=random.randrange(min_length,max_length)))}")
 

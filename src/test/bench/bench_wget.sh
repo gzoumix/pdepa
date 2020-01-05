@@ -79,7 +79,7 @@ function manage_vm {
       echo "   $i already created"
     fi
     # fill the file
-    ssh "${CONNEXION}" "sed '1d' ${DISTANT_DIR}/table.csv | sed s+^+${VM_ID}/+" >> "${LOCAL_DIR}/table.csv"
+    ssh "${CONNEXION}" "sed '1d' ${DISTANT_DIR}/table.csv" >> "${LOCAL_DIR}/table.csv"
     echo ""
     i=$((i + 1))
   done

@@ -11,15 +11,17 @@
 
 function usage {
   echo "$0 -h|--help"
-  echo "$0 [-d DISTRIB_FILE] TEST_FILE"
+  echo "$0 [-d DISTRIB_FILE] [-s] TEST_FILE"
   echo "     -h|--help        print this message"
   echo "     -d DISTRIB_FILE  set the distribution where to get the bench data from. If not given, reads from the standard input."
+  echo "     -s               also send the bench_run.sh script to the cluster"
   echo "     TEST_FILE        the file containing all the tests to perform"
 }
 
 TEST_FILE=""
 DISTRIB_FILE=""
 DISTRIB_FILE_TMP=""
+SEND_SCRIPT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -32,6 +34,10 @@ while [[ $# -gt 0 ]]; do
     DISTRIB_FILE="$2"
     shift # past argument
     shift # past value
+    ;;
+    -s)
+    SEND_SCRIPT="YES"
+    shift
     ;;
     *)
     [[ $# -ne 1 ]] && echo "Wrong number of arguments" && usage && exit 1
@@ -96,7 +102,7 @@ for line in "${DATA[@]}"; do
   echo "sending data to $i: ${CONNEXION}"
   ssh "${CONNEXION}" "mkdir -p ${DIRNAME}"
   scp "${DIRNAME}/${FILENAME}_${i}${EXTENSION}" "${CONNEXION}:${TEST_FILE}"
-  #scp bench_run.sh "${CONNEXION}:"
+  [[ -z "${SEND_SCRIPT}" ]] || scp bench_run.sh bench_data.sh "${CONNEXION}:"
   i=$((i + 1))
 done
 
