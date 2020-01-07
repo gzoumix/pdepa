@@ -65,6 +65,7 @@ makefile_model = """
 
 LOCAL_DIR:="$(shell pwd)"
 REPO_NAME:={}
+MANIFESTS:={}
 
 LOCATION_ROOT:="/etc/portage"
 # LOCATION_ROOT:=.
@@ -73,50 +74,64 @@ LOCATION_CATEGORIES_ORIGINAL:=${{LOCATION_CATEGORIES}}.original
 LOCATION_REPOS:=${{LOCATION_ROOT}}/repos.conf
 LOCATION_REPOS_ORIGINAL:=${{LOCATION_REPOS}}.original
 
-install: location_categories_no_original location_categories_original location_repos_no_original location_repos_original
-  echo icse2020 > "${{LOCATION_CATEGORIES}}"
-  echo [DEFAULT] >> ${{LOCATION_REPOS}}
-  echo main-repo = ${{REPO_NAME}} >> ${{LOCATION_REPOS}}
-  echo  >> ${{LOCATION_REPOS}}
-  echo [${{REPO_NAME}}] >> ${{LOCATION_REPOS}}
-  echo location = ${{LOCAL_DIR}} >> ${{LOCATION_REPOS}}
-  echo masters= >> ${{LOCATION_REPOS}}
-  echo auto-sync = no >> ${{LOCATION_REPOS}}
+install: categories_no_original categories_original repos_no_original repos_original mv_portage_conf ${{MANIFESTS}}
+	echo icse2020 > "${{LOCATION_CATEGORIES}}"
+	echo [DEFAULT] >> ${{LOCATION_REPOS}}
+	echo main-repo = ${{REPO_NAME}} >> ${{LOCATION_REPOS}}
+	echo  >> ${{LOCATION_REPOS}}
+	echo [${{REPO_NAME}}] >> ${{LOCATION_REPOS}}
+	echo location = ${{LOCAL_DIR}} >> ${{LOCATION_REPOS}}
+	echo masters= >> ${{LOCATION_REPOS}}
+	echo auto-sync = no >> ${{LOCATION_REPOS}}
 
 clean:
-  rm ${{LOCATION_CATEGORIES}}
-  mv ${{LOCATION_CATEGORIES_ORIGINAL}} ${{LOCATION_CATEGORIES}}
-  rm ${{LOCATION_REPOS}}
-  mv ${{LOCATION_REPOS_ORIGINAL}} ${{LOCATION_REPOS}}
+	rm ${{LOCATION_CATEGORIES}}
+	mv ${{LOCATION_CATEGORIES_ORIGINAL}} ${{LOCATION_CATEGORIES}}
+	rm ${{LOCATION_REPOS}}
+	mv ${{LOCATION_REPOS_ORIGINAL}} ${{LOCATION_REPOS}}
+	rm ${{LOCATION_ROOT}}/make.conf
+	mv ${{LOCATION_ROOT}}/make.conf.original ${{LOCATION_ROOT}}/make.conf
+	rm ${{LOCATION_ROOT}}/make.profile
+	mv ${{LOCATION_ROOT}}/make.profile.original ${{LOCATION_ROOT}}/make.profile
 
-location_categories_no_original:
+categories_no_original:
 ifneq (,$(wildcard ${{LOCATION_CATEGORIES_ORIGINAL}}))
-  $(error ERROR: ${{LOCATION_CATEGORIES_ORIGINAL}} already exists)
+	$(error ERROR: ${{LOCATION_CATEGORIES_ORIGINAL}} already exists)
 endif
 
-location_categories_original:
+categories_original:
 ifneq (,$(wildcard "${{LOCATION_CATEGORIES}}"))
-  mv "${{LOCATION_CATEGORIES}}" "${{LOCATION_CATEGORIES_ORIGINAL}}"
+	mv "${{LOCATION_CATEGORIES}}" "${{LOCATION_CATEGORIES_ORIGINAL}}"
 else
-  echo > "${{LOCATION_CATEGORIES_ORIGINAL}}"
+	echo > "${{LOCATION_CATEGORIES_ORIGINAL}}"
 endif
 
 
-location_repos_no_original:
+repos_no_original:
 ifneq (,$(wildcard ${{LOCATION_REPOS_ORIGINAL}}))
-  $(error ERROR: ${{LOCATION_REPOS_ORIGINAL}} already exists)
+	$(error ERROR: ${{LOCATION_REPOS_ORIGINAL}} already exists)
 endif
 
-location_repos_original:
+repos_original:
 ifneq (,$(wildcard "${{LOCATION_REPOS}}"))
-  mv "${{LOCATION_REPOS}}" "${{LOCATION_REPOS_ORIGINAL}}"
+	mv "${{LOCATION_REPOS}}" "${{LOCATION_REPOS_ORIGINAL}}"
 else
-  echo > "${{LOCATION_REPOS_ORIGINAL}}"
+	echo > "${{LOCATION_REPOS_ORIGINAL}}"
 endif
+
+mv_portage_conf:
+	mv ${{LOCATION_ROOT}}/make.conf ${{LOCATION_ROOT}}/make.conf.original
+	touch ${{LOCATION_ROOT}}/make.conf
+	mv ${{LOCATION_ROOT}}/make.profile ${{LOCATION_ROOT}}/make.profile.original
+	mkdir ${{LOCATION_ROOT}}/make.profile
+
+%/Manifest:
+	cd $(shell dirname $@) ; ebuild *.ebuild manifest
 """
 
 def generate_makefile(config):
-  return makefile_model.format(config.repo_name)
+  manifests = ' '.join([f"{get_package_name(config.repo_name, package_id)}/Manifest" for package_id in range(config.nb_package)])
+  return makefile_model.format(config.repo_name, manifests)
 
 
 def main_manage_parameter():
