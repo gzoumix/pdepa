@@ -45,7 +45,8 @@ def generate_package(package_id, config):
     lines = f.readlines()
   lines = [ [int(i) for i in line.split(' ')[:-1]] for line in lines[1:] ]
   lines = [ [(f"!f_{-i}" if(i<0) else f"f_{i}") for i in line] for line in lines ]
-  required_use = ' '.join([ f"||({' '.join(line)})" for line in lines ])
+  required_use = ' '.join([ f"|| ( {' '.join(line)} )" for line in lines 
+])
 
   conditions = random.choices(range(1, nb_features+1), k=nb_shared)
   dependencies = random.choices(tuple(get_package_name(config.repo_name, pid) for pid in range(package_id)) + tuple(get_package_name(config.repo_name, pid) for pid in range(package_id+1, config.nb_package)), k=nb_shared)
@@ -74,15 +75,7 @@ LOCATION_CATEGORIES_ORIGINAL:=${{LOCATION_CATEGORIES}}.original
 LOCATION_REPOS:=${{LOCATION_ROOT}}/repos.conf
 LOCATION_REPOS_ORIGINAL:=${{LOCATION_REPOS}}.original
 
-install: categories_no_original categories_original repos_no_original repos_original mv_portage_conf ${{MANIFESTS}}
-	echo icse2020 > "${{LOCATION_CATEGORIES}}"
-	echo [DEFAULT] >> ${{LOCATION_REPOS}}
-	echo main-repo = ${{REPO_NAME}} >> ${{LOCATION_REPOS}}
-	echo  >> ${{LOCATION_REPOS}}
-	echo [${{REPO_NAME}}] >> ${{LOCATION_REPOS}}
-	echo location = ${{LOCAL_DIR}} >> ${{LOCATION_REPOS}}
-	echo masters= >> ${{LOCATION_REPOS}}
-	echo auto-sync = no >> ${{LOCATION_REPOS}}
+install: categories_no_original categories_original repos_no_original repos_original setup_portage_conf ${{MANIFESTS}}
 
 clean:
 	rm ${{LOCATION_CATEGORIES}}
@@ -119,11 +112,38 @@ else
 	echo > "${{LOCATION_REPOS_ORIGINAL}}"
 endif
 
-mv_portage_conf:
+setup_portage_conf: profiles/repo_name profiles/default/eapi profiles/default/make.defaults metadata/layout.conf
+	echo ${{REPO_NAME}} > "${{LOCATION_CATEGORIES}}"
+	echo [DEFAULT] >> ${{LOCATION_REPOS}}
+	echo main-repo = ${{REPO_NAME}} >> ${{LOCATION_REPOS}}
+	echo  >> ${{LOCATION_REPOS}}
+	echo [${{REPO_NAME}}] >> ${{LOCATION_REPOS}}
+	echo location = ${{LOCAL_DIR}} >> ${{LOCATION_REPOS}}
+	echo masters= >> ${{LOCATION_REPOS}}
+	echo auto-sync = no >> ${{LOCATION_REPOS}}
 	mv ${{LOCATION_ROOT}}/make.conf ${{LOCATION_ROOT}}/make.conf.original
 	touch ${{LOCATION_ROOT}}/make.conf
 	mv ${{LOCATION_ROOT}}/make.profile ${{LOCATION_ROOT}}/make.profile.original
-	mkdir ${{LOCATION_ROOT}}/make.profile
+	ln -s ${{LOCAL_DIR}}/profiles/default ${{LOCATION_ROOT}}/make.profile
+
+profiles/repo_name:
+	mkdir -p profiles
+	echo ${{REPO_NAME}} > profiles/repo_name
+
+profiles/default/eapi:
+	mkdir -p profiles/default
+	echo 6 > profiles/default/eapi
+	echo >> profiles/default/eapi
+
+profiles/default/make.defaults:
+	mkdir -p profiles/default
+	echo 'ARCH="amd64"' > profiles/default/make.defaults
+	echo 'ACCEPT_KEYWORDS="$${{ARCH}}"' >> profiles/default/make.defaults
+	echo  >> profiles/default/make.defaults
+
+metadata/layout.conf:
+	mkdir -p metadata
+	echo masters= > metadata/layout.conf
 
 %/Manifest:
 	cd $(shell dirname $@) ; ebuild *.ebuild manifest
@@ -179,21 +199,17 @@ if(__name__ == "__main__"):
     package_name = get_package_name(config.repo_name, package_id, with_category=False)
     dir_package = os.path.join(config.dir_packages, package_name)
     os.mkdir(dir_package)
-    with open(os.path.join(dir_package, f"{package_name}-0.ebuid"), 'w') as f:
+    with open(os.path.join(dir_package, f"{package_name}-0.ebuild"), 'w') as f:
       f.write(ebuild_txt)
 
   # cleanup
   if(config.nb_package > 0): os.remove(config.tempfile)
   os.rmdir(config.tempdir)
 
-  # add the rest of the repo content
-  dir_profiles = os.path.join(config.dir, "profiles")
-  os.mkdir(dir_profiles)
-  with open(os.path.join(dir_profiles, "repo_name"), 'w') as f:
-    f.write(config.repo_name)
-
+  # add the Makefile
   with open(os.path.join(config.dir, "Makefile"), 'w') as f:
     f.write(generate_makefile(config))
+
 
 
   # DIR = "./icse"
