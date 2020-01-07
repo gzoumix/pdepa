@@ -79,7 +79,7 @@ done
 
 if [[ -z "${TO_RUN[2]}" ]]; then
   { docker run "${DOCKER_IMAGE}" bash -c "time pdepa_alt check -U -C -M -- $@" ; } &> "/tmp/pdepa_alt.out"
-  sed -i "s/^user.*$/user 0.000s/" "/tmp/pdepa_alt.out"
+  sed -i "s/^user.*$/user\t0m000s/" "/tmp/pdepa_alt.out"
 fi
 
 function test {
