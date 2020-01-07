@@ -43,13 +43,13 @@ def generate_package(package_id, config):
   lines = ()
   with open(config.tempfile, 'r') as f:
     lines = f.readlines()
-  lines = [ [int(i) for i in line.split(' ')] for line in lines[1:] ]
+  lines = [ [int(i) for i in line.split(' ')[:-1]] for line in lines[1:] ]
   lines = [ [(f"!f_{-i}" if(i<0) else f"f_{i}") for i in line] for line in lines ]
   required_use = ' '.join([ f"||({' '.join(line)})" for line in lines ])
 
   conditions = random.choices(range(1, nb_features+1), k=nb_shared)
   dependencies = random.choices(tuple(get_package_name(config.repo_name, pid) for pid in range(package_id)) + tuple(get_package_name(config.repo_name, pid) for pid in range(package_id+1, config.nb_package)), k=nb_shared)
-  depend = ' '.join(f"{cond}? ( {dep} )" for cond, dep in zip(conditions, dependencies))
+  depend = ' '.join(f"f_{cond}? ( {dep} )" for cond, dep in zip(conditions, dependencies))
 
   return package_model.format(description, iuse, required_use, depend)
 
