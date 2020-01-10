@@ -9,7 +9,7 @@ The name of this project, `pdepa` stands for `Portage Dependency Analyser`.
 ## Dependencies
 
 The tool is implemented in python3, and relies on the following libraries:
- * portage (distributed with e.g., [Gentoo](https://gentoo.org)) which is used to query the portage's package database. A big thanks to Zac Medico for his help and insights in how to use the portage API.
+ * portage (distributed with e.g., [Gentoo](https://gentoo.org)) which is used to query the portage's package database. A big thanks to [Zac Medico](https://github.com/zmedico) for his help and insights in how to use the portage API.
  * lrparsing (distributed with `pip install lrparsing`) which is used to parse the packages' dependencies
  * z3 solver (distributed with `pip install z3-solver`) which is used to analyse the packages' dependencies
 
