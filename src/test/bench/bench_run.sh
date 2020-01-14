@@ -22,6 +22,9 @@ function usage {
 BENCHDIRS=()
 LIST_FILE=""
 LIST_FILE_TMP=""
+EXEC_MAIN=""
+EXEC_PDEPA="python ../../main/pdepa.py"
+EXEC_STANDARD="python pdepa_alt.py"
 DOCKER_IMAGE="gzoumix/pdepa:latest"
 CONCURRENCE=1
 TO_RUN=("YES" "YES" "YES")
@@ -44,7 +47,9 @@ while [[ $# -gt 0 ]]; do
     shift # past value
     ;;
     -k)
-    DOCKER_IMAGE="$2"
+    EXEC_MAIN="docker run \"$2\" "
+    EXEC_PDEPA="pdepa"
+    EXEC_STANDARD="pdepa_alt"
     shift # past argument
     shift # past value
     ;;
@@ -68,6 +73,9 @@ if [[ -z "${LIST_FILE}" ]]; then
   LIST_FILE_TMP="1"
 fi
 
+TESTS=()
+while read line; do TESTS+=("$line"); done < "${LIST_FILE}"
+[[ ! -z "${LIST_FILE_TMP}" ]] && rm "${LIST_FILE}"
 
 #########################################
 # MAIN FUNCTION
@@ -78,7 +86,7 @@ for BENCHDIR in "${BENCHDIRS[@]}"; do
 done
 
 if [[ -z "${TO_RUN[2]}" ]]; then
-  { docker run "${DOCKER_IMAGE}" bash -c "time pdepa_alt check -U -C -M -- $@" ; } &> "/tmp/pdepa_alt.out"
+  { ${EXEC_MAIN}bash -c "time ${EXEC_STANDARD} features -U -C -M" ; } &> "/tmp/pdepa_alt.out"
   sed -i "s/^user.*$/user\t0m000s/" "/tmp/pdepa_alt.out"
 fi
 
@@ -86,36 +94,61 @@ function test {
   DIR="$1/$2"
   shift
   shift
+  PACKAGES="$@"
 
-  mkdir "${DIR}"
-  echo "$@" > "${DIR}/list.txt"
+  mkdir -p "${DIR}"
+  if [[ -e "${DIR}/list.txt" ]]; then
+    if [[ "$(cat ${DIR}/list.txt)" != "$@" ]]; then
+      echo "ERROR: ${DIR}/list.txt does not correspond to the current test: $@"
+      return
+    fi
+  else
+    echo "${PACKAGES}" > "${DIR}/list.txt"
+  fi
+
   # emerge
   #{ time emerge -p --backtrack=300 --autounmask y --autounmask-keep-keywords y --autounmask-keep-masks y --autounmask-continue y --autounmask-backtrack y "$@" ; } &> "${DIR}/emerge.out"
   if [[ ! -z "${TO_RUN[0]}" ]]; then
-    { docker run "${DOCKER_IMAGE}" bash -c "time emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y $@" ; } &> "${DIR}/emerge.out"
-    { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/emerge.res"
-  else
-    echo "conflict slot\nuser 0m0.000s" > "${DIR}/emerge.out"
+    echo "${EXEC_MAIN}bash -c \"time emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}\"" &> "${DIR}/emerge.cmd"
+    ${EXEC_MAIN}bash -c "time emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}" &> "${DIR}/emerge.out"
+    #{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/emerge.res"
+  elif [[ ! -e "${DIR}/emerge.out" ]]; then
+    echo -e "conflict slot\nuser\t0m0.000s" > "${DIR}/emerge.out"
     echo "fail" > "${DIR}/emerge.res"
   fi
   # pdepa
   #{ time  pdepa -U -C -p --  "$@" ; } &> "${DIR}/pdepa.out"
   if [[ ! -z "${TO_RUN[1]}" ]]; then
-    { docker run "${DOCKER_IMAGE}" bash -c "time pdepa -U -C -M -p -v -- $@" ; } &> "${DIR}/pdepa.out"
+    ${EXEC_MAIN}bash -c "time ${EXEC_PDEPA} -U -C -M -p -v -- ${PACKAGES}" &> "${DIR}/pdepa.out"
     { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa.res"
-  else
-    echo "loaded 0\nuser 0m0.000s" > "${DIR}/pdepa.out"
+  elif [[ ! -e "${DIR}/pdepa.out" ]]; then
+    echo -e "loaded 0\nuser\t0m0.000s" > "${DIR}/pdepa.out"
     echo "fail" > "${DIR}/pdepa.res"
   fi
   # pdepa_alt
   #{ time  pdepa_alt -U -C -p --  "$@" ; } &> "${DIR}/pdepa_alt.out"
   if [[ ! -z "${TO_RUN[2]}" ]]; then
-    { docker run "${DOCKER_IMAGE}" bash -c "time pdepa_alt check -U -C -M -- $@" ; } &> "${DIR}/pdepa_alt.out"
+    ${EXEC_MAIN}bash -c "time ${EXEC_STANDARD} check -U -C -M -- ${PACKAGES}" &> "${DIR}/pdepa_alt.out"
     { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa_alt.res"
-  else
+  elif [[ ! -e "${DIR}/pdepa_alt.out" ]]; then
     cp "/tmp/pdepa_alt.out" "${DIR}/pdepa_alt.out"
     echo "fail" > "${DIR}/pdepa_alt.res"
   fi
+}
+
+
+
+function process {
+  step="$2"
+  max="$3"
+  for BENCHDIR in "${BENCHDIRS[@]}"; do
+    i="$1"
+    while [ "$i" -lt "${max}" ]; do
+      #echo ${TESTS[$i]}
+      test "${BENCHDIR}" ${TESTS[$i]}
+      i=$((i + step))
+    done
+  done
 }
 
 
@@ -127,18 +160,22 @@ function wait_all {
   done
 }
 
-
-for BENCHDIR in "${BENCHDIRS[@]}"; do
-  i=0
-  while read line; do
-    test "${BENCHDIR}" $line &
-    processes+="$!"
-    i=$((i+1))
-    [[ "${#processes[@]}" -eq "${CONCURRENCE}" ]] && wait_all
-  done < "${LIST_FILE}"
+MAX="${#TESTS[@]}"
+for i in $(seq ${CONCURRENCE}); do
+  j=$((i - 1))
+  process $j ${CONCURRENCE} ${MAX} &
+  processes+=("$!")
 done
 wait_all
 
-if [[ ! -z "${LIST_FILE_TMP}" ]]; then
-  rm "${LIST_FILE}"
-fi
+# for BENCHDIR in "${BENCHDIRS[@]}"; do
+#   i=0
+#   while read line; do
+#     test "${BENCHDIR}" $line &
+#     processes+=("$!")
+#     i=$((i+1))
+#     [[ "${#processes[@]}" -eq "${CONCURRENCE}" ]] && wait_all
+#   done < "${LIST_FILE}"
+# done
+# wait_all
+

@@ -50,7 +50,7 @@ function get_time {
 }
 
 function get_emerge_success {
-  if ! grep -q '^\[ebuild' "$1" || grep -q 'REQUIRED_USE\|dependency .* conflict' "$1" ; then
+  if ! grep -q '^\[ebuild' "$1" || grep -q '^\[blocks B' "$1" || grep -q 'REQUIRED_USE\|dependency .* conflict' "$1" ; then
     echo False
 	return
   else

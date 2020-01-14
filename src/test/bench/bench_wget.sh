@@ -11,13 +11,15 @@
 
 function usage {
   echo "$0 -h|--help"
-  echo "$0 [-d DISTRIB_FILE] BENCHDIR"
+  echo "$0 [-d DISTRIB_FILE] [--prefix PREFIX] BENCHDIR+"
   echo "     -h|--help        print this message"
   echo "     -d DISTRIB_FILE  set the distribution where to get the bench data from. If not given, reads from the standard input."
-  echo "     BENCHDIR         the directory where the benchs are stored"
+  echo "     --prefix PREFIX  set the prefix in which the tables will be downloaded."
+  echo "     BENCHDIR         the directories where the benchs are remotely stored."
 }
 
-BENCHDIR=""
+BENCHDIR=()
+PREFIX="."
 DISTRIB_FILE=""
 DISTRIB_FILE_TMP=""
 
@@ -33,9 +35,13 @@ while [[ $# -gt 0 ]]; do
     shift # past argument
     shift # past value
     ;;
+    --prefix)
+    PREFIX="$2"
+    shift # past argument
+    shift # past value
+    ;;
     *)
-    [[ $# -ne 1 ]] && echo "Wrong number of arguments" && usage && exit 1
-    BENCHDIR="$1"
+    BENCHDIR+=("$1")
     shift
     ;;
   esac
@@ -69,8 +75,8 @@ function manage_vm {
   CONNEXION="$1"
   shift
   i=0
-  for DISTANT_DIR in "$@"; do
-    LOCAL_DIR="${BENCHDIR}/${i}"
+  for DISTANT_DIR in "${BENCHDIR[@]}"; do
+    LOCAL_DIR="${PREFIX}/${BENCHDIR}/${i}"
     # create the directory and the file if they don't exit
     mkdir -p "${LOCAL_DIR}"
     if [[ ! -e "${LOCAL_DIR}/table.csv" ]]; then

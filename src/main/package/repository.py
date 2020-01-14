@@ -100,6 +100,11 @@ class package(object):
       iuse (string): if this parameter is None, then the returned feature is the one corresponding to this package.
         Otherwise, it is the one corresponding to the use flag in parameter for this package 
     """
+    res = self._use_map.get(iuse)
+    if(res is None):
+      print(f"WARNING: package {self._name} has no use flag {iuse} (declared use flags: {list(self._use_map.keys())} vs {self._iuse_declared})")
+      res = self._repo._compute_feature_from_iuse(self._name, iuse)
+      self._use_map[iuse] = res
     return self._use_map[iuse]
     #try:
     #  return self._use_map[iuse]

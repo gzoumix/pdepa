@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 __author__     = "Michael Lienhardt"
-__copyright__  = "Copyright 2019, Michael Lienhardt"
+__copyright__  = "Copyright 2019-2020, Michael Lienhardt"
 __license__    = "GPL3"
 __version__    = "1"
 __maintainer__ = "Michael Lienhardt"
@@ -158,6 +158,9 @@ def main_manage_parameter():
   dep_parser.add_argument("package", nargs='+', help="the cp to install")
   dep_parser.add_argument("-d", action="store_true",  help="load only the dependencies of the cp to install, instead of the whole feature model")
 
+  ft_parser = subparsers.add_parser('features', parents=[common_parser], add_help=False)
+  ft_parser.set_defaults(cmd='features')
+
   cnf_parser = subparsers.add_parser('cnf', parents=[common_parser], add_help=False)
   cnf_parser.set_defaults(cmd='cnf')
 
@@ -203,4 +206,6 @@ if(__name__ == '__main__'):
     print("found {} for dependency solving of {} in {}s".format(("an error" if(test._solution is None) else "a solution"), cps, end - begin))
     if(test._solution is None): exit(1)
     else: exit(0)
+  elif(cmd == "features"):
+    statistics_load(test.load_all_cpv)
   else: raise Exception("bad arguments")
