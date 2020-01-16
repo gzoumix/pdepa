@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
     shift # past value
     ;;
     -k)
-    EXEC_MAIN="docker run \"$2\" "
+    EXEC_MAIN="docker run $2 "
     EXEC_PDEPA="pdepa"
     EXEC_STANDARD="pdepa_alt"
     shift # past argument
@@ -109,7 +109,6 @@ function test {
   # emerge
   #{ time emerge -p --backtrack=300 --autounmask y --autounmask-keep-keywords y --autounmask-keep-masks y --autounmask-continue y --autounmask-backtrack y "$@" ; } &> "${DIR}/emerge.out"
   if [[ ! -z "${TO_RUN[0]}" ]]; then
-    echo "${EXEC_MAIN}bash -c \"time emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}\"" &> "${DIR}/emerge.cmd"
     ${EXEC_MAIN}bash -c "time emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}" &> "${DIR}/emerge.out"
     #{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/emerge.res"
   elif [[ ! -e "${DIR}/emerge.out" ]]; then

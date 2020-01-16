@@ -74,20 +74,16 @@ function manage_vm {
   echo "== $*"
   CONNEXION="$1"
   shift
-  i=0
   for DISTANT_DIR in "${BENCHDIR[@]}"; do
-    LOCAL_DIR="${PREFIX}/${BENCHDIR}/${i}"
+    LOCAL_DIR="${PREFIX}/${DISTANT_DIR}"
     # create the directory and the file if they don't exit
     mkdir -p "${LOCAL_DIR}"
     if [[ ! -e "${LOCAL_DIR}/table.csv" ]]; then
       echo "TEST emerge_time emerge_success pdepa_time pdepa_success pdepa_alt_time pdepa_alt_success feature_full feature_loaded" > "${LOCAL_DIR}/table.csv"
-    else
-      echo "   $i already created"
     fi
     # fill the file
     ssh "${CONNEXION}" "sed '1d' ${DISTANT_DIR}/table.csv" >> "${LOCAL_DIR}/table.csv"
     echo ""
-    i=$((i + 1))
   done
   echo "== ${CONNEXION} finished"
 }

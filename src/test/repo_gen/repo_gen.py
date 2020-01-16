@@ -71,7 +71,7 @@ def generate_package(package_id, config):
   # 6. the dependencies of the package
   conditions = random.choices(range(1, nb_features+1), k=nb_shared)
   dependencies = random.choices(tuple(get_package_name(config.repo_name, pid) for pid in range(package_id)) + tuple(get_package_name(config.repo_name, pid) for pid in range(package_id+1, config.nb_package)), k=nb_shared)
-  depend = ' '.join(f"f_{cond}? ( {dep} )" for cond, dep in zip(conditions, dependencies))
+  depend = ' '.join(f"f_{cond}? ( {dep} ) !f_{cond}? ( !{dep} )" for cond, dep in zip(conditions, dependencies))
 
   return package_model.format(description, iuse, required_use, depend)
 

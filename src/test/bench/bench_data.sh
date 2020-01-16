@@ -65,12 +65,21 @@ function get_emerge_success {
 }
 
 function get_pdepa_success {
-  if [ "$(cat "$1")" = "fail" ]; then
+  if grep -q "Failure" "$1" ; then
     echo False
   else
     echo True
   fi
 }
+
+function get_standard_success {
+  if grep -q "found an error" "$1" ; then
+    echo False
+  else
+    echo True
+  fi
+}
+
 
 #########################################
 # MAIN ALGORITHM
@@ -94,10 +103,10 @@ for BENCHDIR in "${BENCHDIRS[@]}"; do
     EMERGE_SUCCESS="$(get_emerge_success ${EMERGE_OUT})"
     
     PDEPA_TIME="$(get_time ${PDEPA_OUT})"
-    PDEPA_SUCCESS="$(get_pdepa_success ${PDEPA_RES})"
+    PDEPA_SUCCESS="$(get_pdepa_success ${PDEPA_OUT})"
 
     PDEPA_ALT_TIME="$(get_time ${PDEPA_ALT_OUT})"
-    PDEPA_ALT_SUCCESS="$(get_pdepa_success ${PDEPA_ALT_RES})"
+    PDEPA_ALT_SUCCESS="$(get_standard_success ${PDEPA_ALT_OUT})"
 
     FEATURE_FULL="$(grep "with .* features" "${PDEPA_ALT_OUT}" | cut -d' ' -f3)"
     FEATURE_LOADED="$(grep '^loaded' "${PDEPA_OUT}" | cut -d' ' -f2)"
