@@ -54,6 +54,7 @@ if [[ -z "${DISTRIB_FILE}" ]]; then
 fi
 
 # ssh breaks the link to the input file, so we need to store its content before hand.
+# loads the connexion
 DATA=()
 while read line; do
   DATA+=("$line")
@@ -62,10 +63,9 @@ done < "${DISTRIB_FILE}"
 if [[ ! -z "${DISTRIB_FILE_TMP}" ]]; then
   rm "${DISTRIB_FILE}"
 fi
-
-
 NB_VM="${#DATA[@]}"
 
+# loads the test file
 TESTS=()
 while read line; do
   TESTS+=("$line")
@@ -74,6 +74,7 @@ done < "${TEST_FILE}"
 #########################################
 # MAIN FUNCTION
 
+# manages the file name
 DIRNAME="$(dirname "${TEST_FILE}")"
 FILENAME="$(basename "${TEST_FILE}")"
 EXTENSION="${FILENAME##*.}"
@@ -84,9 +85,16 @@ else
   EXTENSION=".${EXTENSION}"
 fi
 
+# clears possibly existing files
+i=1
+for line in "${DATA[@]}"; do
+  [ -e "${DIRNAME}/${FILENAME}_${i}${EXTENSION}" ] && rm "${DIRNAME}/${FILENAME}_${i}${EXTENSION}"
+  i=$((i + 1))
+done
+
+# fills the files
 i=1
 j=1
-
 for line in "${TESTS[@]}"; do
   echo "giving test $j to $i"
   #ssh "${CONNEXION}" "mkdir -p $(dirname "${TEST_FILE}") && echo \"${line}\" >> ${TEST_FILE}"
@@ -95,7 +103,7 @@ for line in "${TESTS[@]}"; do
   j=$((j + 1))
 done
 
-
+# sends the files
 i=1
 for line in "${DATA[@]}"; do
   CONNEXION="$(echo ${line} | cut -f1 -d' ')"

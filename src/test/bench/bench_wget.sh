@@ -67,13 +67,17 @@ fi
 #########################################
 # MAIN FUNCTION
 
+for DISTANT_DIR in "${BENCHDIR[@]}"; do
+  LOCAL_DIR="${PREFIX}/${DISTANT_DIR}"
+  [[ -e "${LOCAL_DIR}/table.csv" ]] && rm "${LOCAL_DIR}/table.csv"
+done
+
 VM_ID=0
 
 function manage_vm {
-  echo "==============================="
-  echo "== $*"
   CONNEXION="$1"
   shift
+  echo "getting data from ${CONNEXION}"
   for DISTANT_DIR in "${BENCHDIR[@]}"; do
     LOCAL_DIR="${PREFIX}/${DISTANT_DIR}"
     # create the directory and the file if they don't exit
@@ -82,10 +86,8 @@ function manage_vm {
       echo "TEST emerge_time emerge_success pdepa_time pdepa_success pdepa_alt_time pdepa_alt_success feature_full feature_loaded" > "${LOCAL_DIR}/table.csv"
     fi
     # fill the file
-    ssh "${CONNEXION}" "sed '1d' ${DISTANT_DIR}/table.csv" >> "${LOCAL_DIR}/table.csv"
-    echo ""
+    { ssh "${CONNEXION}" "sed '1d' ${DISTANT_DIR}/table.csv" >> "${LOCAL_DIR}/table.csv" ; } || echo "ERROR: in getting the data"
   done
-  echo "== ${CONNEXION} finished"
 }
 
 

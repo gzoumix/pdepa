@@ -22,6 +22,7 @@ function usage {
 BENCHDIRS=()
 LIST_FILE=""
 LIST_FILE_TMP=""
+EXEC_TIME="/usr/bin/time -f'real\t%E\nuser\t%U\nsys\t%S\nmemory\t%M'"
 EXEC_MAIN=""
 EXEC_PDEPA="python ../../main/pdepa.py"
 EXEC_STANDARD="python pdepa_alt.py"
@@ -47,9 +48,10 @@ while [[ $# -gt 0 ]]; do
     shift # past value
     ;;
     -k)
-    EXEC_MAIN="docker run $2 "
+    [ "$2" == "default" ] || DOCKER_IMAGE="$2"
+    EXEC_MAIN="docker run ${DOCKER_IMAGE} "
     EXEC_PDEPA="pdepa"
-    EXEC_STANDARD="pdepa_alt"
+    EXEC_STANDARD="standard"
     shift # past argument
     shift # past value
     ;;
@@ -86,8 +88,9 @@ for BENCHDIR in "${BENCHDIRS[@]}"; do
 done
 
 if [[ -z "${TO_RUN[2]}" ]]; then
-  { ${EXEC_MAIN}bash -c "time ${EXEC_STANDARD} features -U -C -M" ; } &> "/tmp/pdepa_alt.out"
-  sed -i "s/^user.*$/user\t0m000s/" "/tmp/pdepa_alt.out"
+  { ${EXEC_MAIN}bash -c "time ${EXEC_STANDARD} features -U -C -M" ; } &> "/tmp/standard.out"
+  sed -i "s/^user.*$/user\t0m000s/" "/tmp/standard.out"
+  echo "found an error" >> "/tmp/standard.out"
 fi
 
 function test {
@@ -109,7 +112,7 @@ function test {
   # emerge
   #{ time emerge -p --backtrack=300 --autounmask y --autounmask-keep-keywords y --autounmask-keep-masks y --autounmask-continue y --autounmask-backtrack y "$@" ; } &> "${DIR}/emerge.out"
   if [[ ! -z "${TO_RUN[0]}" ]]; then
-    ${EXEC_MAIN}bash -c "time emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}" &> "${DIR}/emerge.out"
+    ${EXEC_MAIN}bash -c "${EXEC_TIME} emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}" &> "${DIR}/emerge.out"
     #{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/emerge.res"
   elif [[ ! -e "${DIR}/emerge.out" ]]; then
     echo -e "conflict slot\nuser\t0m0.000s" > "${DIR}/emerge.out"
@@ -118,20 +121,20 @@ function test {
   # pdepa
   #{ time  pdepa -U -C -p --  "$@" ; } &> "${DIR}/pdepa.out"
   if [[ ! -z "${TO_RUN[1]}" ]]; then
-    ${EXEC_MAIN}bash -c "time ${EXEC_PDEPA} -U -C -M -p -v -- ${PACKAGES}" &> "${DIR}/pdepa.out"
+    ${EXEC_MAIN}bash -c "${EXEC_TIME} ${EXEC_PDEPA} -U -C -M -p -v -- ${PACKAGES}" &> "${DIR}/pdepa.out"
     { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa.res"
   elif [[ ! -e "${DIR}/pdepa.out" ]]; then
     echo -e "loaded 0\nuser\t0m0.000s" > "${DIR}/pdepa.out"
     echo "fail" > "${DIR}/pdepa.res"
   fi
-  # pdepa_alt
-  #{ time  pdepa_alt -U -C -p --  "$@" ; } &> "${DIR}/pdepa_alt.out"
+  # standard
+  #{ time  standard -U -C -p --  "$@" ; } &> "${DIR}/standard.out"
   if [[ ! -z "${TO_RUN[2]}" ]]; then
-    ${EXEC_MAIN}bash -c "time ${EXEC_STANDARD} check -U -C -M -- ${PACKAGES}" &> "${DIR}/pdepa_alt.out"
-    { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa_alt.res"
-  elif [[ ! -e "${DIR}/pdepa_alt.out" ]]; then
-    cp "/tmp/pdepa_alt.out" "${DIR}/pdepa_alt.out"
-    echo "fail" > "${DIR}/pdepa_alt.res"
+    ${EXEC_MAIN}bash -c "${EXEC_TIME} ${EXEC_STANDARD} check -U -C -M -- ${PACKAGES}" &> "${DIR}/standard.out"
+    { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/standard.res"
+  elif [[ ! -e "${DIR}/standard.out" ]]; then
+    cp "/tmp/standard.out" "${DIR}/standard.out"
+    echo "fail" > "${DIR}/standard.res"
   fi
 }
 
