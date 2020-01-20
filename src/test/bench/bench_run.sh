@@ -88,8 +88,8 @@ for BENCHDIR in "${BENCHDIRS[@]}"; do
 done
 
 if [[ -z "${TO_RUN[2]}" ]]; then
-  { ${EXEC_MAIN}bash -c "time ${EXEC_STANDARD} features -U -C -M" ; } &> "/tmp/standard.out"
-  sed -i "s/^user.*$/user\t0m000s/" "/tmp/standard.out"
+  { ${EXEC_MAIN}bash -c "${EXEC_TIME} ${EXEC_STANDARD} features -U -C -M" ; } &> "/tmp/standard.out"
+  sed -i "s/^user.*$/user\t0.00/" "/tmp/standard.out"
   echo "found an error" >> "/tmp/standard.out"
 fi
 

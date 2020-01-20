@@ -59,7 +59,7 @@ function get_time {
 
 function get_memory {
   MEMORY_STRING="$(grep '^memory' "$1" | cut -f2)"
-  echo "${MEMORY_STRING} / 1024" | bc
+  echo "scale=4; ${MEMORY_STRING} / 1024" | bc
 }
 
 function get_emerge_success {

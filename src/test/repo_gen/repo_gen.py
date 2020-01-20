@@ -50,7 +50,8 @@ def generate_package(package_id, config):
   # 1. find the number of features in the package, the length of its REQUIRED_USE, and the number of its dependencies
   nb_features = random.randrange(config.vmin, config.vmax+1)
   nb_clauses  = random.randrange(config.cmin, config.cmax+1)
-  nb_shared   = random.randrange(config.smin, config.smax+1)
+  nb_deps     = random.randrange(config.dmin, config.dmax+1)
+  nb_cfts     = random.randrange(config.smin, config.smax+1)
 
   # 2. run the tool that generates the constraint that will become the REQUIRED_USE
   cmd = config.cmd_core + ("-v", str(nb_features), "-c", str(nb_clauses),)
@@ -58,7 +59,7 @@ def generate_package(package_id, config):
   stdout, stderr = process.communicate()
 
   # 3. the description of the package
-  description = f"package {package_id}, with {nb_features} features, {nb_clauses} clauses and {nb_shared} shared features"
+  description = f"package {package_id}, with {nb_features} features, {nb_clauses} clauses, {nb_deps} depependencies and {nb_cfts} conflicts"
   # 4. the iuse of the package
   iuse = ' '.join([f"f_{i}" for i in range(1, nb_features+1)])
   # 5. the required_use of the package
@@ -69,11 +70,14 @@ def generate_package(package_id, config):
   lines = [ [(f"!f_{-i}" if(i<0) else f"f_{i}") for i in line] for line in lines ]
   required_use = ' '.join([ f"|| ( {' '.join(line)} )" for line in lines ])
   # 6. the dependencies of the package
-  conditions = random.choices(range(1, nb_features+1), k=nb_shared)
-  dependencies = random.choices(tuple(get_package_name(config.repo_name, pid) for pid in range(package_id)) + tuple(get_package_name(config.repo_name, pid) for pid in range(package_id+1, config.nb_package)), k=nb_shared)
-  depend = ' '.join(f"f_{cond}? ( {dep} ) !f_{cond}? ( !{dep} )" for cond, dep in zip(conditions, dependencies))
+  possible_pids = set(tuple(range(package_id)) + tuple(range(package_id+1, config.nb_package)))
+  dependencies  = random.sample(possible_pids, k=nb_deps)
+  possible_pids.difference_update(dependencies)
+  conflicts     = random.sample(possible_pids, k=nb_cfts)
+  depend_str    = ' '.join(f"f_{cond}? ( {get_package_name(config.repo_name, pid)} )" for cond, pid in zip(random.choices(range(1, nb_features+1), k=nb_deps), dependencies))
+  conflict_str  = ' '.join(f"!f_{cond}? ( !{get_package_name(config.repo_name, pid)} )" for cond, pid in zip(random.choices(range(1, nb_features+1), k=nb_cfts), conflicts))
 
-  return package_model.format(description, iuse, required_use, depend)
+  return package_model.format(description, iuse, required_use, (depend_str + ' ' + conflict_str))
 
 
 makefile_model = """
@@ -195,8 +199,10 @@ def main_manage_parameter():
   parser.add_argument('--vmax', type=int, default=1, help="the maximal number of features in a package")
   parser.add_argument('--cmin', type=int, default=1, help="the minimal number of clauses / scaling factor in the REQUIRED_USE of a package")
   parser.add_argument('--cmax', type=int, default=1, help="the maximal number of clauses / scaling factor in the REQUIRED_USE of a package")
-  parser.add_argument('--smin', type=int, default=1, help="the minimal number of dependencies in the DEPEND of a package")
-  parser.add_argument('--smax', type=int, default=1, help="the maximal number of dependencies in the DEPEND of a package")
+  parser.add_argument('--dmin', type=int, default=0, help="the minimal number of dependencies in the DEPEND of a package")
+  parser.add_argument('--dmax', type=int, default=1, help="the maximal number of dependencies in the DEPEND of a package")
+  parser.add_argument('--smin', type=int, default=0, help="the minimal number of conflicts in the DEPEND of a package")
+  parser.add_argument('--smax', type=int, default=1, help="the maximal number of conflicts in the DEPEND of a package")
   parser.add_argument('-k', type=int,  default=1, help="for double power-law only: this is the average clause length")
   parser.add_argument('-b', type=int,  default=1, help="for double power-law only: power-law exponent of clauses")
   parser.add_argument('-p', type=int,  default=1, help="<power-law exponent of variables>")

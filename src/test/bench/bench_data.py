@@ -25,12 +25,15 @@ color_map_simple = {
   'feature_loaded_pct': { 'main':'darkorange', 'std':'bisque', 'mean':'burlywood', 'extreme':'orange'},
   'emerge_time': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
   'pdepa_time': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
-  'pdepa_alt_time': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
+  'standard_time': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
+  'emerge_memory': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
+  'pdepa_memory': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
+  'standard_memory': { 'main':'dodgerblue', 'std':'lightskyblue', 'mean':'deepskyblue', 'extreme':'steelblue'},
 }
 color_map_failure = {
   'emerge_success':'lightblue',
   'pdepa_success':'red',
-  'pdepa_alt_success':'orange',
+  'standard_success':'orange',
 }
 
 
@@ -65,13 +68,13 @@ def save_graph_fail(path, series_list, color_map):
 converter_success = lambda x: int(x == 'False')
 converters = {
   'TEST': str,
-  'emerge_time': float, 'emerge_success': converter_success,
-  'pdepa_time': float, 'pdepa_success': converter_success,
-  'pdepa_alt_time': float, 'pdepa_alt_success': converter_success,
+  'emerge_time': float, 'emerge_memory': float, 'emerge_success': converter_success,
+  'pdepa_time': float, 'pdepa_memory': float, 'pdepa_success': converter_success,
+  'standard_time': float, 'standard_memory': float, 'standard_success': converter_success,
   'feature_full':int, 'feature_loaded':int
 }
 
-column_sum = frozenset( ('emerge_time', 'pdepa_time', 'pdepa_alt_time', 'feature_loaded', 'emerge_success', 'pdepa_success', 'pdepa_alt_success', ) )
+column_sum = frozenset( ('emerge_time', 'pdepa_time', 'standard_time', 'emerge_memory', 'pdepa_memory', 'standard_memory', 'feature_loaded', 'emerge_success', 'pdepa_success', 'standard_success', ) )
 column_compare = frozenset( ('feature_full', ) )
 
 # column_sum = frozenset( ('emerge_time', 'pdepa_time', 'pdepa_alt_time', 'feature_loaded', ) )
@@ -79,10 +82,11 @@ column_compare = frozenset( ('feature_full', ) )
 
 column_graph_simple = {
   'feature_loaded_pct':'feature loaded percent',
-  'emerge_time':'emerge time', 'pdepa_time':'pdepa time', 'pdepa_alt_time':'standard approach time',
+  'emerge_time':'emerge time', 'pdepa_time':'pdepa time', 'standard_time':'standard approach time',
+  'emerge_memory':'emerge memory', 'pdepa_memory':'pdepa memory', 'standard_memory':'standard approach memory',
 }
 column_graph_failure = {
-  'emerge_success':'emerge failure', 'pdepa_success':'pdepa failure', 'pdepa_alt_success':'standard approach failure',  
+  'emerge_success':'emerge failure', 'pdepa_success':'pdepa failure', 'standard_success':'standard approach failure',  
 }
 
 def main_manage_parameter():
@@ -122,7 +126,7 @@ if(__name__ == "__main__"):
   bench_main['feature_loaded_pct'] = (100 * bench_main['feature_loaded']) / bench_main['feature_full']
 
   # 3. print the graphs
-  bench_main['TEST'].to_csv(path=os.path.join(save_path, 'order.txt'), index=False, sep=' ')
+  bench_main['TEST'].to_csv(path=os.path.join(save_path, 'order.txt'), index=False, sep=' ', header=False)
   test_nb = bench_main.shape[0]
   xticks = tuple(round((test_nb*nb) / (nb_xticks-1)) for nb in range(nb_xticks))
   print(test_nb, xticks)
