@@ -94,22 +94,24 @@ def main_manage_parameter():
   parser = argparse.ArgumentParser()
   parser.add_argument('-d', '--dir', default=".", help="the directory in which to store the statistics")
   parser.add_argument('-n', '--nb_xticks', default=6, type=int, help="the number of x ticks in the generated graphs")
+  parser.add_argument('--save', default=None, help="If given, saves the combined data in the file in parameter")  
   parser.add_argument('benchdir', nargs='+', help="the directories where to find the bench data in table.csv")
   args = parser.parse_args()
   save_path = os.path.abspath(args.dir)
   nb_xticks = args.nb_xticks
   benchs = tuple(pd.read_csv(os.path.join(path, 'table.csv'), sep=' ', converters=converters, index_col='TEST') for path in args.benchdir)
-  return save_path, nb_xticks, benchs
+  return save_path, nb_xticks, benchs, args.save
 
 
 if(__name__ == "__main__"):
-  save_path, nb_xticks, benchs = main_manage_parameter()
+  save_path, nb_xticks, benchs, save = main_manage_parameter()
   bench_nb = len(benchs)
 
   # 1. get the global statistics
   bench_full = pd.concat(benchs, ignore_index=True)
   bench_full['feature_loaded_pct'] = (100 * bench_full['feature_loaded']) / bench_full['feature_full']
   stats = { column: bench_full[column].describe() for column in column_graph_simple.keys() }
+  pd.DataFrame(stats).to_csv(path_or_buf=os.path.join(save_path, 'stats.txt'), index=True, sep=' ', header=True)
 
 
   # 2. combine all the benchs
@@ -125,8 +127,11 @@ if(__name__ == "__main__"):
   bench_main = bench_main.sort_values(by=['feature_loaded']).reset_index()
   bench_main['feature_loaded_pct'] = (100 * bench_main['feature_loaded']) / bench_main['feature_full']
 
+  if(save is not None):
+    bench_main.to_csv(path_or_buf=os.path.join(save_path, save), index=False, sep=' ', header=True)
+
   # 3. print the graphs
-  bench_main['TEST'].to_csv(path=os.path.join(save_path, 'order.txt'), index=False, sep=' ', header=False)
+  bench_main['TEST'].to_csv(path_or_buf=os.path.join(save_path, 'order.txt'), index=False, sep=' ', header=False)
   test_nb = bench_main.shape[0]
   xticks = tuple(round((test_nb*nb) / (nb_xticks-1)) for nb in range(nb_xticks))
   print(test_nb, xticks)
