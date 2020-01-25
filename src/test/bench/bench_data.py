@@ -11,6 +11,7 @@ __status__     = "Prototype"
 
 import os
 import argparse
+import math
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -94,17 +95,16 @@ def main_manage_parameter():
   parser = argparse.ArgumentParser()
   parser.add_argument('-d', '--dir', default=".", help="the directory in which to store the statistics")
   parser.add_argument('-n', '--nb_xticks', default=6, type=int, help="the number of x ticks in the generated graphs")
-  parser.add_argument('--save', default=None, help="If given, saves the combined data in the file in parameter")  
   parser.add_argument('benchdir', nargs='+', help="the directories where to find the bench data in table.csv")
   args = parser.parse_args()
   save_path = os.path.abspath(args.dir)
   nb_xticks = args.nb_xticks
   benchs = tuple(pd.read_csv(os.path.join(path, 'table.csv'), sep=' ', converters=converters, index_col='TEST') for path in args.benchdir)
-  return save_path, nb_xticks, benchs, args.save
+  return save_path, nb_xticks, benchs
 
 
 if(__name__ == "__main__"):
-  save_path, nb_xticks, benchs, save = main_manage_parameter()
+  save_path, nb_xticks, benchs = main_manage_parameter()
   bench_nb = len(benchs)
 
   # 1. get the global statistics
@@ -115,22 +115,43 @@ if(__name__ == "__main__"):
 
 
   # 2. combine all the benchs
-  bench_main = benchs[0].copy()
-  for bench in benchs[1:]:
-    for column, series in bench.items():
-      if(column in column_sum): bench_main[column] += series
-      elif(column in column_compare):
-        if(not bench_main[column].equals(series)): raise Exception(f"Difference on column {column}")
-      else: raise Exception(f"Unknown column {column}")
-  for column in column_sum:
-    bench_main[column] = bench_main[column] / bench_nb
-  bench_main = bench_main.sort_values(by=['feature_loaded']).reset_index()
-  bench_main['feature_loaded_pct'] = (100 * bench_main['feature_loaded']) / bench_main['feature_full']
+  if(bench_nb > 1):
+    bench_main = benchs[0].copy()
+    for bench in benchs[1:]:
+      for column, series in bench.items():
+        if(column in column_sum): bench_main[column] += series
+        elif(column in column_compare):
+          if(not bench_main[column].equals(series)): raise Exception(f"Difference on column {column}")
+        else: raise Exception(f"Unknown column {column}")
+    for column in column_sum:
+      bench_main[column] = bench_main[column] / bench_nb
+    bench_main = bench_main.sort_values(by=['feature_loaded']).reset_index()
+    feature_nb = bench_main['feature_full'][0]
+    bench_main['feature_loaded_pct'] = (100 * bench_main['feature_loaded']) / feature_nb
 
-  if(save is not None):
-    bench_main.to_csv(path_or_buf=os.path.join(save_path, save), index=False, sep=' ', header=True)
+    bench_main.to_csv(path_or_buf=os.path.join(save_path, 'table.csv'), index=False, sep=' ', header=True)
 
-  # 3. print the graphs
+    # 2.2. also save the statistics between benches
+    benchs_stds = {'COLUMN':[], 'std':[], 'min':[], 'max':[],}
+    for column in column_sum:
+      column_count = benchs[0][column].count()
+      column_stat = pd.DataFrame({i:benchs[i][column] for i in range(bench_nb)}).transpose().describe().transpose()
+      column_std = column_stat['std']
+      benchs_stds['COLUMN'].append(column)
+      benchs_stds['std'].append(math.sqrt((column_std**2).sum()/column_count))
+      benchs_stds['min'].append(column_std.min())
+      benchs_stds['max'].append(column_std.max())
+    benchs_stds = pd.DataFrame(benchs_stds).set_index('COLUMN')
+    benchs_stds.loc['feature_loaded_pct'] = (100 * benchs_stds.loc['feature_loaded']) / feature_nb
+    benchs_stds.to_csv(path_or_buf=os.path.join(save_path, 'bench_stds.csv'), index=True, sep=' ', header=True)
+  else:
+    bench_main = benchs[0]
+    bench_main = bench_main.sort_values(by=['feature_loaded']).reset_index()
+    feature_nb = bench_main['feature_full'][0]
+    bench_main['feature_loaded_pct'] = (100 * bench_main['feature_loaded']) / feature_nb
+
+
+  # 4. print the graphs
   bench_main['TEST'].to_csv(path_or_buf=os.path.join(save_path, 'order.txt'), index=False, sep=' ', header=False)
   test_nb = bench_main.shape[0]
   xticks = tuple(round((test_nb*nb) / (nb_xticks-1)) for nb in range(nb_xticks))

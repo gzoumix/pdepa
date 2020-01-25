@@ -26,7 +26,7 @@ SEND_SCRIPT=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
-    [[ $# -ne 2 ]] && echo "Wrong number of arguments"
+    [[ $# -ne 1 ]] && echo "Wrong number of arguments"
     usage
     exit 0
     ;;
