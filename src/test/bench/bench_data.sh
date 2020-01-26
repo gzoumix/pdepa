@@ -106,11 +106,11 @@ for BENCHDIR in "${BENCHDIRS[@]}"; do
   for i in "${LIST[@]}"; do
     TEST="$(dirname $i)"
     EMERGE_OUT="${BENCHDIR}/${TEST}/emerge.out"
-    EMERGE_RES="${BENCHDIR}/${TEST}/emerge.res"
+    #EMERGE_RES="${BENCHDIR}/${TEST}/emerge.res"
     PDEPA_OUT="${BENCHDIR}/${TEST}/pdepa.out"
-    PDEPA_RES="${BENCHDIR}/${TEST}/pdepa.res"
+    #PDEPA_RES="${BENCHDIR}/${TEST}/pdepa.res"
     STANDARD_OUT="${BENCHDIR}/${TEST}/standard.out"
-    STANDARD_RES="${BENCHDIR}/${TEST}/standard.res"
+    #STANDARD_RES="${BENCHDIR}/${TEST}/standard.res"
     
     EMERGE_TIME="$(get_time ${EMERGE_OUT})"
     EMERGE_MEMORY="$(get_memory ${EMERGE_OUT})"

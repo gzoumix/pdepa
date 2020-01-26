@@ -114,26 +114,26 @@ function test {
     ${EXEC_MAIN}bash -c "${EXEC_TIME} emerge -p --backtrack=300 --autounmask y --autounmask-continue y --autounmask-backtrack y ${PACKAGES}" &> "${DIR}/emerge.out"
     #{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/emerge.res"
   elif [[ ! -e "${DIR}/emerge.out" ]]; then
-    echo -e "conflict slot\nuser\t0m0.000s" > "${DIR}/emerge.out"
-    echo "fail" > "${DIR}/emerge.res"
+    echo -e "conflict slot\nuser\t0.000\nmemory\t0\n" > "${DIR}/emerge.out"
+    #echo "fail" > "${DIR}/emerge.res"
   fi
   # pdepa
   #{ time  pdepa -U -C -p --  "$@" ; } &> "${DIR}/pdepa.out"
   if [[ ! -z "${TO_RUN[1]}" ]]; then
     ${EXEC_MAIN}bash -c "${EXEC_TIME} ${EXEC_PDEPA} -U -C -M -p -v -- ${PACKAGES}" &> "${DIR}/pdepa.out"
-    { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa.res"
+    #{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/pdepa.res"
   elif [[ ! -e "${DIR}/pdepa.out" ]]; then
-    echo -e "loaded 0\nuser\t0m0.000s" > "${DIR}/pdepa.out"
-    echo "fail" > "${DIR}/pdepa.res"
+    echo -e "loaded 0\nFailure\nuser\t0.000\nmemory\t0\n" > "${DIR}/pdepa.out"
+    #echo "fail" > "${DIR}/pdepa.res"
   fi
   # standard
   #{ time  standard -U -C -p --  "$@" ; } &> "${DIR}/standard.out"
   if [[ ! -z "${TO_RUN[2]}" ]]; then
     ${EXEC_MAIN}bash -c "${EXEC_TIME} ${EXEC_STANDARD} check -U -C -M -- ${PACKAGES}" &> "${DIR}/standard.out"
-    { [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/standard.res"
+    #{ [ "$?" -eq '0' ] && echo "success" || echo "fail" ; } > "${DIR}/standard.res"
   elif [[ ! -e "${DIR}/standard.out" ]]; then
     cp "/tmp/standard.out" "${DIR}/standard.out"
-    echo "fail" > "${DIR}/standard.res"
+    #echo "fail" > "${DIR}/standard.res"
   fi
 }
 
