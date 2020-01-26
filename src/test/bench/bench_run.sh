@@ -72,15 +72,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${LIST_FILE}" ]]; then
-  LIST_FILE=$(mktemp --tmpdir)
-  exec > "${LIST_FILE}"
-  LIST_FILE_TMP="1"
-fi
-
 TESTS=()
-while read line; do TESTS+=("$line"); done < "${LIST_FILE}"
-[[ ! -z "${LIST_FILE_TMP}" ]] && rm "${LIST_FILE}"
+while read line; do
+  TESTS+=("${line}")
+done < "${LIST_FILE:-/dev/stdin}"
+
 
 #########################################
 # MAIN FUNCTION

@@ -49,22 +49,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${DISTRIB_FILE}" ]]; then
-  DISTRIB_FILE="$(mktemp --tmpdir)"
-  exec > "${DISTRIB_FILE}"
-  DISTRIB_FILE_TMP="1"
-fi
 
 # ssh breaks the link to the input file, so we need to store its content before hand.
 # loads the connexion
+
+
 DATA=()
 while read line; do
   DATA+=("$line")
-done < "${DISTRIB_FILE}"
+done < "${DISTRIB_FILE:-/dev/stdin}"
 
-if [[ ! -z "${DISTRIB_FILE_TMP}" ]]; then
-  rm "${DISTRIB_FILE}"
-fi
 NB_VM="${#DATA[@]}"
 
 # loads the test file
