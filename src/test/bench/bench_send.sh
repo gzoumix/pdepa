@@ -18,6 +18,8 @@ function usage {
   echo "     TEST_FILE        the file containing all the tests to perform"
 }
 
+LOCAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 TEST_FILE=""
 DISTRIB_FILE=""
 DISTRIB_FILE_TMP=""
@@ -110,7 +112,7 @@ for line in "${DATA[@]}"; do
   echo "sending data to $i: ${CONNEXION}"
   ssh "${CONNEXION}" "mkdir -p ${DIRNAME}"
   scp "${DIRNAME}/${FILENAME}_${i}${EXTENSION}" "${CONNEXION}:${TEST_FILE}"
-  [[ -z "${SEND_SCRIPT}" ]] || scp bench_run.sh bench_data.sh "${CONNEXION}:"
+  [[ -z "${SEND_SCRIPT}" ]] || scp "${LOCAL_DIR}/bench_run.sh" "${LOCAL_DIR}/bench_data.sh" "${CONNEXION}:"
   i=$((i + 1))
 done
 

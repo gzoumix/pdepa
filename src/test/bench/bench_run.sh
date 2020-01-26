@@ -19,13 +19,16 @@ function usage {
   echo "     BENCHDIR                     sets the directory where to store the benchs"
 }
 
+
+LOCAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 BENCHDIRS=()
 LIST_FILE=""
 LIST_FILE_TMP=""
 EXEC_TIME="/usr/bin/time -f'real\t%E\nuser\t%U\nsys\t%S\nmemory\t%M'"
 EXEC_MAIN=""
-EXEC_PDEPA="python ../../main/pdepa.py"
-EXEC_STANDARD="python pdepa_alt.py"
+EXEC_PDEPA="python ${LOCAL_DIR}/../../main/pdepa.py"
+EXEC_STANDARD="python ${LOCAL_DIR}/standard.py"
 DOCKER_IMAGE="gzoumix/pdepa:latest"
 CONCURRENCE=1
 TO_RUN=("YES" "YES" "YES")
