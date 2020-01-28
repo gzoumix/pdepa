@@ -63,7 +63,7 @@ function get_memory {
 }
 
 function get_emerge_success {
-  if ! grep -q '^\[ebuild' "$1" || grep -q '^\[blocks B' "$1" || grep -q 'REQUIRED_USE\|dependency .* conflict' "$1"  || grep -q 'Error: circular dependencies'; then
+  if ! grep -q '^\[ebuild' "$1" || grep -q '^\[blocks B' "$1" || grep -q 'REQUIRED_USE\|dependency .* conflict' "$1"  || grep -q 'Error: circular dependencies' "$1"; then
     echo False
 	return
   else
